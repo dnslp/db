@@ -184,4 +184,12 @@ struct GaugeStyleConfiguration: Codable { // Added Codable
     var fontDesign: Font.Design? {
         selectedFontDesign.design
     }
+
+    // Helper computed property for UI logic
+    var isGaugeBackgroundEffectivelyInvisible: Bool {
+        // Check if the stored CodableColor's opacity is zero (or very close to it)
+        // and no material is selected.
+        let isColorInvisible = _gaugeBackgroundColor.opacity < 0.001
+        return selectedMaterial == .none && isColorInvisible
+    }
 }

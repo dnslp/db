@@ -15,7 +15,7 @@ struct GaugeStyleEditorView: View {
                             Text(materialType.rawValue).tag(materialType)
                         }
                     }
-                    .disabled(config.selectedMaterial == .none && config.gaugeBackgroundColor.opacity == 0) // Example: disable if fully transparent and no material
+                    .disabled(config.isGaugeBackgroundEffectivelyInvisible)
                     // A note or logic to clarify that material might override color could be useful depending on CircularGaugeView's rendering logic.
                     // For now, CircularGaugeView prioritizes material if present.
                 }
