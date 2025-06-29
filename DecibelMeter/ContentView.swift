@@ -251,11 +251,102 @@ struct ContentView: View {
                     .padding(.horizontal)
 
                 DisclosureGroup("EQ Visualization Settings", isExpanded: $showEQSettingsPanel) {
-                    VStack {
-                        Text("EQ settings controls will go here.")
-                            .padding()
-                        // Future sliders and controls will be added here
+                    VStack(alignment: .leading, spacing: 10) {
+                        // xScalePowerFactor Slider
+                        HStack {
+                            Text("Scale Power:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.xScalePowerFactor, in: 0.5...3.0, step: 0.01)
+                            Text(String(format: "%.2f", eqSettings.xScalePowerFactor))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // Min Line Width Slider
+                        HStack {
+                            Text("Min Line Width:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.minLineWidth, in: 0.5...5.0, step: 0.1)
+                                .onChange(of: eqSettings.minLineWidth) { newValue, oldValue in
+                                    eqSettings.maxLineWidth = max(newValue, eqSettings.maxLineWidth)
+                                }
+                            Text(String(format: "%.1f", eqSettings.minLineWidth))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // Max Line Width Slider
+                        HStack {
+                            Text("Max Line Width:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.maxLineWidth, in: 1.0...10.0, step: 0.1)
+                                .onChange(of: eqSettings.maxLineWidth) { newValue, oldValue in
+                                    eqSettings.minLineWidth = min(newValue, eqSettings.minLineWidth)
+                                }
+                            Text(String(format: "%.1f", eqSettings.maxLineWidth))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // Low Amplitude Hue Slider
+                        HStack {
+                            Text("Low Amp Hue:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.lowAmplitudeHue, in: 0.0...1.0, step: 0.01)
+                            Text(String(format: "%.2f", eqSettings.lowAmplitudeHue))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // High Amplitude Hue Slider
+                        HStack {
+                            Text("High Amp Hue:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.highAmplitudeHue, in: 0.0...1.0, step: 0.01)
+                            Text(String(format: "%.2f", eqSettings.highAmplitudeHue))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // Low Amplitude Brightness Slider
+                        HStack {
+                            Text("Low Amp Bright:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.lowAmplitudeBrightness, in: 0.0...1.0, step: 0.01)
+                            Text(String(format: "%.2f", eqSettings.lowAmplitudeBrightness))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // High Amplitude Brightness Slider
+                        HStack {
+                            Text("High Amp Bright:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.highAmplitudeBrightness, in: 0.0...1.0, step: 0.01)
+                            Text(String(format: "%.2f", eqSettings.highAmplitudeBrightness))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // Min Opacity Slider
+                        HStack {
+                            Text("Min Opacity:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.minOpacity, in: 0.0...1.0, step: 0.01)
+                                .onChange(of: eqSettings.minOpacity) { newValue, oldValue in
+                                    eqSettings.maxOpacity = max(newValue, eqSettings.maxOpacity)
+                                }
+                            Text(String(format: "%.2f", eqSettings.minOpacity))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
+                        // Max Opacity Slider
+                        HStack {
+                            Text("Max Opacity:").frame(width: 120, alignment: .leading)
+                            Slider(value: $eqSettings.maxOpacity, in: 0.0...1.0, step: 0.01)
+                                .onChange(of: eqSettings.maxOpacity) { newValue, oldValue in
+                                    eqSettings.minOpacity = min(newValue, eqSettings.minOpacity)
+                                }
+                            Text(String(format: "%.2f", eqSettings.maxOpacity))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 50, alignment: .trailing)
+                        }
+
                     }
+                    .padding() // Add padding inside the DisclosureGroup content
                     .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal)
