@@ -5,6 +5,7 @@
 //  Created by David Nyman on 6/23/25.
 //
 import SwiftUI
+import UIKit
 import AVFoundation
 import Accelerate
 import AVFAudio
@@ -169,21 +170,11 @@ struct ContentView: View {
     }
 
     private var scalableGauge: some View {
-        GeometryReader { geo in
-            Gauge(value: Double(meter.level), in: 0...140) {
-                EmptyView()
-            } currentValueLabel: {
-                Text("\(Int(meter.level)) dB")
-                    .font(.system(size: geo.size.width*0.18, weight: .bold, design: .rounded))
-            }
-            .gaugeStyle(.accessoryCircularCapacity)
-            .tint(Gradient(colors: [.cyan, .blue, .purple]))
-            .frame(width: geo.size.width*2.4, height: geo.size.width*2.4)
+        CircularGaugeView(level: meter.level)
+            .frame(width: UIScreen.main.bounds.width * 0.75,
+                   height: UIScreen.main.bounds.width * 0.75)
             .background(.ultraThinMaterial)
             .clipShape(Circle())
-            .position(x: geo.size.width/2, y: geo.size.height/2)
-        }
-        .frame(height: 350) // bigger gauge
     }
 
     private var stats: some View {
