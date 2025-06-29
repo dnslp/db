@@ -174,14 +174,16 @@ struct ContentView: View {
                 EmptyView()
             } currentValueLabel: {
                 Text("\(Int(meter.level)) dB")
-                    .font(.system(size: geo.size.width*0.12, weight: .bold, design: .rounded))
+                    .font(.system(size: geo.size.width*0.18, weight: .bold, design: .rounded))
             }
             .gaugeStyle(.accessoryCircularCapacity)
-            .tint(Gradient(colors: [.green, .yellow, .orange, .red]))
-            .frame(width: geo.size.width*2, height: geo.size.width*2)
+            .tint(Gradient(colors: [.cyan, .blue, .purple]))
+            .frame(width: geo.size.width*2.4, height: geo.size.width*2.4)
+            .background(.ultraThinMaterial)
+            .clipShape(Circle())
             .position(x: geo.size.width/2, y: geo.size.height/2)
         }
-        .frame(height: 300) // bigger gauge
+        .frame(height: 350) // bigger gauge
     }
 
     private var stats: some View {
