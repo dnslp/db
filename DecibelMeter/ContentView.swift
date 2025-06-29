@@ -160,6 +160,16 @@ struct ContentView: View {
     }
 
     // MARK: – UI components
+    private func colorForValue(_ value: Int) -> Color {
+        if value <= 50 {
+            return .green
+        } else if value <= 70 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+
     private var header: some View {
         Label(meter.level < SAFE_THRESHOLD ? "Safe Level (Baby)" : "Unsafe Level (Baby)", systemImage: meter.level < SAFE_THRESHOLD ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
             .font(.headline)
@@ -189,12 +199,12 @@ struct ContentView: View {
 
     private var stats: some View {
         HStack(spacing: 20) { // Reduced spacing to accommodate three items
-            statBox("MIN", Int(meter.minDecibels == Float.greatestFiniteMagnitude ? 0 : meter.minDecibels), borderColor: .blue) // Display 0 if minDecibels is still initial value
-            statBox("AVG", Int(meter.avg), borderColor: .orange)
-            statBox("MAX", Int(meter.peak), borderColor: .red)
+            statBox("MIN", Int(meter.minDecibels == Float.greatestFiniteMagnitude ? 0 : meter.minDecibels)) // Display 0 if minDecibels is still initial value
+            statBox("AVG", Int(meter.avg))
+            statBox("MAX", Int(meter.peak))
         }
     }
-    private func statBox(_ title: String, _ val: Int, borderColor: Color) -> some View {
+    private func statBox(_ title: String, _ val: Int) -> some View {
         VStack {
             Text(title).font(.caption2).foregroundColor(.secondary)
             Text("\(val)").font(.title).bold().monospacedDigit()
@@ -204,7 +214,7 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20)) // Increased corner radius
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(borderColor, lineWidth: 2)
+                .stroke(colorForValue(val), lineWidth: 2)
         )
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4) // Added shadow
     }
