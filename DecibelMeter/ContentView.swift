@@ -29,14 +29,17 @@ final class AudioMeter: ObservableObject {
     @Published var avg:   Float = 0
     @Published var peak:  Float = 0
     @Published var minDecibels: Float = Float.greatestFiniteMagnitude
-    @Published var spectrum: [Float] = Array(repeating: 0, count: 60)
+    @Published var spectrum: [Float] = Array(repeating: 0, count: 60) // Default, will be updated
+    @Published var numberOfBands: Int = 60 // Default, configurable
 
     private var sampleCount = 0
     private var running = false
 
     // MARK: public API
-    func start() {
+    func start(numberOfBands: Int = 60) { // Accept numberOfBands
         guard !running else { return }
+        self.numberOfBands = numberOfBands
+        self.spectrum = Array(repeating: 0, count: numberOfBands) // Initialize spectrum with correct size
         do {
             try prepareSession()
             let node = engine.inputNode
@@ -92,9 +95,16 @@ final class AudioMeter: ObservableObject {
                         var mags = [Float](repeating: 0, count: 512)
                         var split = DSPSplitComplex(realp: rOut.baseAddress!, imagp: iOut.baseAddress!)
                         vDSP_zvabs(&split, 1, &mags, 1, 512)
-                        let step = 512/60
+                        // Use the numberOfBands from the published property
+                        let step = 512 / self.numberOfBands
                         var spec: [Float] = []
-                        for idx in stride(from: 0, to: 512, by: step) { spec.append(mags[idx..<(idx+step)].max() ?? 0) }
+                        for i in 0..<self.numberOfBands {
+                            let start = i * step
+                            let end = (i + 1) * step
+                            // Ensure we don't go out of bounds for mags
+                            let currentMax = mags[start..<min(end, mags.count)].max() ?? 0
+                            spec.append(currentMax)
+                        }
                         DispatchQueue.main.async { self.spectrum = spec }
                     }
                 }
@@ -103,27 +113,71 @@ final class AudioMeter: ObservableObject {
     }
 }
 
+// MARK: - EQ Settings View
+struct EQSettingsView: View {
+    @Binding var numberOfBands: Float
+    @Binding var animationSpeed: Double // Example: 0.1 to 1.0
+    @Binding var lineSmoothness: Int    // Example: 1 to 10
+
+    var body: some View {
+        VStack {
+            VStack(alignment: .leading, spacing: 10) { // Align text to leading, add spacing
+                HStack {
+                    Text("Bands:").frame(width: 80, alignment: .leading) // Fixed width for label
+                    Slider(value: $numberOfBands, in: 10...100, step: 1)
+                    Text("\(Int(numberOfBands))").frame(width: 30, alignment: .trailing) // Fixed width for value
+                }
+                HStack {
+                    Text("Speed:").frame(width: 80, alignment: .leading)
+                    Slider(value: $animationSpeed, in: 0.1...1.0, step: 0.1)
+                    Text(String(format: "%.1f", animationSpeed)).frame(width: 30, alignment: .trailing)
+                }
+                HStack {
+                    Text("Smoothness:").frame(width: 80, alignment: .leading)
+                    Slider(value: .init(get: { Float(lineSmoothness) }, set: { lineSmoothness = Int($0) }), in: 1...10, step: 1)
+                    Text("\(lineSmoothness)").frame(width: 30, alignment: .trailing)
+                }
+            }
+            .padding(.vertical, 5) // Reduced vertical padding inside the group
+        }
+        .padding(.horizontal) // Keep horizontal padding for the DisclosureGroup itself
+    }
+}
+
 // MARK: - Spectrum with labels
 struct SpectrumView: View {
     let data: [Float]
+    var animationSpeed: Double
+    var lineSmoothness: Int // Higher value means smoother, less segmented lines
+
     var body: some View {
         GeometryReader { geo in
-            let barW = geo.size.width / CGFloat(data.count)
-            let maxVal = data.max() ?? 1
-            ZStack(alignment: .bottomLeading) {
-                HStack(alignment: .bottom, spacing: barW*0.2) {
-                    ForEach(data.indices, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: barW*0.2)
-                            .fill(Color.accentColor.opacity(0.75))
-                            .frame(width: barW*0.8, height: geo.size.height * CGFloat(data[i]/maxVal))
+            if data.isEmpty {
+                Text("No data") // Handle empty data case
+            } else {
+                let barW = geo.size.width / CGFloat(data.count)
+                let maxVal = data.max() ?? 1
+                // Adjust corner radius based on lineSmoothness.
+                // Smaller barW might need smaller radius.
+                let cornerRadiusFactor = CGFloat(lineSmoothness) / 10.0 // Normalize smoothness to 0.1 - 1.0
+                let cornerRadius = barW * 0.2 * cornerRadiusFactor
+
+                ZStack(alignment: .bottomLeading) {
+                    HStack(alignment: .bottom, spacing: barW * 0.2) {
+                        ForEach(data.indices, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .fill(Color.accentColor.opacity(0.75))
+                                .frame(width: barW * 0.8, height: geo.size.height * CGFloat(data[i] / maxVal))
+                                .animation(.linear(duration: animationSpeed), value: data[i]) // Apply animation
+                        }
                     }
-                }
-                // Frequency tick labels
-                ForEach(FREQ_LABELS, id: \.self) { f in
-                    let x = geo.size.width * CGFloat(log10(Double(f)/50)/log10(400)) // crude log mapping
-                    Text(f < 1000 ? "\(f)" : "\(f/1000)k")
-                        .font(.caption2).foregroundColor(.secondary)
-                        .position(x: x, y: geo.size.height+10)
+                    // Frequency tick labels
+                    ForEach(FREQ_LABELS, id: \.self) { f in
+                        let x = geo.size.width * CGFloat(log10(Double(f)/50)/log10(400)) // crude log mapping
+                        Text(f < 1000 ? "\(f)" : "\(f/1000)k")
+                            .font(.caption2).foregroundColor(.secondary)
+                            .position(x: x, y: geo.size.height+10)
+                    }
                 }
             }
         }
@@ -137,15 +191,42 @@ struct ContentView: View {
     @State private var micGranted = false
     @State private var running = false
 
+    // EQ Settings state variables
+    @State private var showEQSettings = false
+    @State private var numberOfBands: Float = 60 // Default value, matching current spectrum
+    @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
+    @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
+
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
                 header
                 scalableGauge
                 stats
-                SpectrumView(data: meter.spectrum)
+                SpectrumView(data: meter.spectrum, animationSpeed: animationSpeed, lineSmoothness: lineSmoothness)
                     .frame(height: 100)
                     .padding(.horizontal)
+                    .onChange(of: numberOfBands) { oldValue, newValue in
+                        // Restart meter with new number of bands if it's running
+                        if running {
+                            meter.stop()
+                            meter.start(numberOfBands: Int(newValue))
+                        } else {
+                            // Update the meter's band count even if not running, so it starts with the new value
+                            meter.numberOfBands = Int(newValue)
+                            meter.spectrum = Array(repeating: 0, count: Int(newValue))
+                        }
+                    }
+
+                DisclosureGroup("EQ Settings", isExpanded: $showEQSettings) {
+                    EQSettingsView(
+                        numberOfBands: $numberOfBands,
+                        animationSpeed: $animationSpeed,
+                        lineSmoothness: $lineSmoothness
+                    )
+                }
+                .padding(.horizontal)
+
                 actionButton
                 resetButton // Add the new reset button here
             }
@@ -156,7 +237,7 @@ struct ContentView: View {
             if newPhase == .background { meter.suspend() }
             if newPhase == .active { meter.resume() }
         }
-        .task { await requestMic() }
+        .task { await requestMic(initialBands: Int(numberOfBands)) } // Pass initial bands
     }
 
     // MARK: – UI components
@@ -208,9 +289,9 @@ struct ContentView: View {
     private var actionButton: some View {
         Group {
             if !micGranted {
-                Button("Grant Microphone Access") { Task { await requestMic() } }
+                Button("Grant Microphone Access") { Task { await requestMic(initialBands: Int(numberOfBands)) } }
             } else if !running {
-                Button("Start") { meter.start(); running = true }
+                Button("Start") { meter.start(numberOfBands: Int(numberOfBands)); running = true }
             } else {
                 Button("Stop") { meter.stop(); running = false }
             }
@@ -228,7 +309,7 @@ struct ContentView: View {
     }
 
     // MARK: – Permission helper
-    @MainActor private func requestMic() async {
+    @MainActor private func requestMic(initialBands: Int) async {
         if #available(iOS 17, *) {
             micGranted = await AVAudioApplication.requestRecordPermission()
         } else {
@@ -237,7 +318,7 @@ struct ContentView: View {
             }
         }
         if micGranted {
-            meter.start(); running = true
+            meter.start(numberOfBands: initialBands); running = true
         }
     }
 }
