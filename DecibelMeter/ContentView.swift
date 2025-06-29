@@ -188,7 +188,8 @@ struct SpectrumView: View {
 
             ZStack(alignment: .bottomLeading) {
                 // Segmented Line Chart
-                if data.count > 1 {
+                Group { // Group to apply animation to the chart elements
+                    if data.count > 1 {
                     ForEach(0..<data.count - 1, id: \.self) { i in
                         Path { path in
                             let freq1 = frequencyForIndex(i, totalCount: data.count, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq)
@@ -212,6 +213,7 @@ struct SpectrumView: View {
                         )
                     }
                 }
+                .animation(.spring(duration: 0.2, bounce: 0.0), value: data) // Apply animation here
 
                 // Frequency tick labels
                 ForEach(FREQ_LABELS, id: \.self) { f in
@@ -431,9 +433,17 @@ struct ContentView: View {
             if !micGranted {
                 Button("Grant Microphone Access") { Task { await requestMic() } }
             } else if !running {
-                Button("Start") { meter.start(); running = true }
+                HStack { // HStack to group Start and Reset
+                    Button("Start") { meter.start(); running = true }
+                    Spacer()
+                    Button("Reset Stats") { meter.resetStats() }
+                }
             } else {
-                Button("Stop") { meter.stop(); running = false }
+                HStack { // HStack to group Stop and Reset
+                    Button("Stop") { meter.stop(); running = false }
+                    Spacer()
+                    Button("Reset Stats") { meter.resetStats() }
+                }
             }
         }
         .buttonStyle(.borderedProminent)
