@@ -10,6 +10,22 @@ import AVFoundation
 import Accelerate
 import AVFAudio
 
+// MARK: - EQ Visualization Settings Structure
+struct EQVisualizationSettings: Codable {
+    var xScalePowerFactor: CGFloat = 1.5
+    var minLineWidth: CGFloat = 1.0
+    var maxLineWidth: CGFloat = 5.0
+    var lowAmplitudeHue: Double = 0.7  // e.g., Blue/Violet
+    var highAmplitudeHue: Double = 0.0 // e.g., Red
+    var lowAmplitudeBrightness: Double = 0.7
+    var highAmplitudeBrightness: Double = 1.0
+    var minOpacity: Double = 0.6
+    var maxOpacity: Double = 1.0
+
+    // Add a static default instance for easy initialization
+    static let `default` = EQVisualizationSettings()
+}
+
 // MARK: - Parameters
 private let CAL_OFFSET: Float = -7          // tweak after calibration
 private let SAFE_THRESHOLD: Float = 50      // baby‑safe cut‑off dB
@@ -106,21 +122,20 @@ final class AudioMeter: ObservableObject {
 // MARK: - Spectrum with labels
 struct SpectrumView: View {
     let data: [Float]
-    private let xScalePowerFactor: CGFloat = 1.5 // Factor to compress high frequencies
+    @Binding var settings: EQVisualizationSettings // Changed from @State to @Binding
 
     // Helper to calculate x position with non-linear scaling
     private func xPosition(forFrequency hz: Double, totalWidth: CGFloat, minFreq: Double, maxFreq: Double) -> CGFloat {
-        guard minFreq > 0, maxFreq > 0, maxFreq > minFreq else { return 0 } // Avoid log(0) or division by zero
+        guard minFreq > 0, maxFreq > 0, maxFreq > minFreq else { return 0 }
         let logMin = log10(minFreq)
         let logMax = log10(maxFreq)
         let logFreq = log10(hz)
 
-        // Normalized logarithmic position (0-1)
         var normalizedLogPos = (logFreq - logMin) / (logMax - logMin)
-        normalizedLogPos = max(0, min(1, normalizedLogPos)) // Clamp to 0-1
+        normalizedLogPos = max(0, min(1, normalizedLogPos))
 
-        // Apply power factor
-        let scaledPos = pow(normalizedLogPos, xScalePowerFactor)
+        // Use power factor from settings
+        let scaledPos = pow(normalizedLogPos, settings.xScalePowerFactor)
 
         return totalWidth * scaledPos
     }
@@ -142,22 +157,25 @@ struct SpectrumView: View {
     }
 
     private func segmentLineWidth(for amplitude: Float, maxVal: Float) -> CGFloat {
-        guard maxVal > 0 else { return 1.0 }
+        guard maxVal > 0 else { return settings.minLineWidth }
         let normalizedAmplitude = CGFloat(amplitude / maxVal)
-        return 1.0 + (normalizedAmplitude * 4.0) // Range 1pt to 5pt
+        return settings.minLineWidth + (normalizedAmplitude * (settings.maxLineWidth - settings.minLineWidth))
     }
 
     private func segmentColor(for amplitude: Float, maxVal: Float) -> Color {
-        guard maxVal > 0 else { return .gray }
+        guard maxVal > 0 else { return Color(hue: settings.lowAmplitudeHue, saturation: 1, brightness: settings.lowAmplitudeBrightness) }
         let normalizedAmplitude = CGFloat(amplitude / maxVal)
-        // Hue from blue/violet (0.7) to red (0.0), Brightness from 0.7 to 1.0
-        return Color(hue: 0.7 - (normalizedAmplitude * 0.7), saturation: 1, brightness: 0.7 + (normalizedAmplitude * 0.3))
+
+        let hue = settings.lowAmplitudeHue - (normalizedAmplitude * (settings.lowAmplitudeHue - settings.highAmplitudeHue))
+        let brightness = settings.lowAmplitudeBrightness + (normalizedAmplitude * (settings.highAmplitudeBrightness - settings.lowAmplitudeBrightness))
+
+        return Color(hue: hue, saturation: 1, brightness: brightness) // Assuming saturation is constant for now
     }
 
     private func segmentOpacity(for amplitude: Float, maxVal: Float) -> Double {
-        guard maxVal > 0 else { return 0.6 }
+        guard maxVal > 0 else { return settings.minOpacity }
         let normalizedAmplitude = CGFloat(amplitude / maxVal)
-        return 0.6 + (normalizedAmplitude * 0.4) // Range 0.6 to 1.0
+        return settings.minOpacity + (normalizedAmplitude * (settings.maxOpacity - settings.minOpacity))
     }
 
     var body: some View {
@@ -219,15 +237,29 @@ struct ContentView: View {
     @State private var micGranted = false
     @State private var running = false
 
+    @State private var eqSettings = EQVisualizationSettings.default
+    @State private var showEQSettingsPanel = false
+
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
                 header
                 scalableGauge
                 stats
-                SpectrumView(data: meter.spectrum)
+                SpectrumView(data: meter.spectrum, settings: $eqSettings) // Pass settings
                     .frame(height: 100)
                     .padding(.horizontal)
+
+                DisclosureGroup("EQ Visualization Settings", isExpanded: $showEQSettingsPanel) {
+                    VStack {
+                        Text("EQ settings controls will go here.")
+                            .padding()
+                        // Future sliders and controls will be added here
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal)
+
                 actionButton
             }
             .padding()
