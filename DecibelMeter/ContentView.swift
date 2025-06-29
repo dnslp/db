@@ -241,6 +241,16 @@ struct ContentView: View {
     }
 
     // MARK: – UI components
+    private func colorForValue(_ value: Int) -> Color {
+        if value <= 50 {
+            return .green
+        } else if value <= 70 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+
     private var header: some View {
         Label(meter.level < SAFE_THRESHOLD ? "Safe Level (Baby)" : "Unsafe Level (Baby)", systemImage: meter.level < SAFE_THRESHOLD ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
             .font(.headline)
@@ -283,6 +293,10 @@ struct ContentView: View {
         .padding(16)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20)) // Increased corner radius
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(colorForValue(val), lineWidth: 2)
+        )
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4) // Added shadow
     }
 
