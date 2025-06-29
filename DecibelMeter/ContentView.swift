@@ -197,11 +197,17 @@ struct ContentView: View {
     @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
     @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
 
+    // AppStorage for the gauge style configuration
+    @AppStorage("gaugeStyleConfig") private var gaugeStyleConfigData: Data?
+    @State private var gaugeStyleConfig: GaugeStyleConfiguration = GaugeStyleConfiguration() // This will be our working copy
+    @State private var showGaugeStyleEditor = false
+
+
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
                 header
-                scalableGauge
+                customizableGauge // Renamed from scalableGauge
                 stats
                 SpectrumView(data: meter.spectrum, animationSpeed: animationSpeed, lineSmoothness: lineSmoothness)
                     .frame(height: 100)
@@ -228,16 +234,50 @@ struct ContentView: View {
                 .padding(.horizontal)
 
                 actionButton
-                resetButton // Add the new reset button here
+                resetButton
+
+                Button("Edit Gauge Style") {
+                    showGaugeStyleEditor = true
+                }
+                .buttonStyle(.bordered)
+                .padding(.top)
             }
             .padding()
         }
         .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $showGaugeStyleEditor) {
+            GaugeStyleEditorView(config: $gaugeStyleConfig)
+                .onDisappear {
+                    saveGaugeConfig()
+                }
+        }
+        .onAppear {
+            loadGaugeConfig()
+        }
         .onChange(of: phase) { oldPhase, newPhase in
-            if newPhase == .background { meter.suspend() }
+            if newPhase == .background { meter.suspend(); saveGaugeConfig() } // Save on backgrounding
             if newPhase == .active { meter.resume() }
         }
         .task { await requestMic(initialBands: Int(numberOfBands)) } // Pass initial bands
+    }
+
+    // MARK: - Config Persistence
+    private func loadGaugeConfig() {
+        guard let data = gaugeStyleConfigData else { return }
+        do {
+            gaugeStyleConfig = try JSONDecoder().decode(GaugeStyleConfiguration.self, from: data)
+        } catch {
+            print("Error decoding gaugeStyleConfig: \(error)")
+            // Optionally, reset to default or handle error
+        }
+    }
+
+    private func saveGaugeConfig() {
+        do {
+            gaugeStyleConfigData = try JSONEncoder().encode(gaugeStyleConfig)
+        } catch {
+            print("Error encoding gaugeStyleConfig: \(error)")
+        }
     }
 
     // MARK: – UI components
@@ -267,15 +307,27 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var scalableGauge: some View {
-
-        CircularGaugeView(level: meter.level)
-            .frame(width: UIScreen.main.bounds.width * 0.75,
-                   height: UIScreen.main.bounds.width * 0.75)
-
-            .background(.ultraThinMaterial)
-            .clipShape(Circle())
-            .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5) // Added shadow
+    private var customizableGauge: some View { // Renamed
+        CircularGaugeView(
+            level: meter.level,
+            gaugeBackgroundColor: gaugeStyleConfig.gaugeBackgroundColor,
+            gaugeBackgroundMaterial: gaugeStyleConfig.gaugeBackgroundMaterial,
+            progressArcColors: gaugeStyleConfig.progressArcColors,
+            progressArcStrokeStyle: gaugeStyleConfig.progressArcStrokeStyle,
+            showShadow: gaugeStyleConfig.showShadow, // Pass the simple boolean
+            customShadow: gaugeStyleConfig.customShadow, // Pass the detailed struct
+            textColor: gaugeStyleConfig.textColor,
+            fontDesign: gaugeStyleConfig.fontDesign
+        )
+        .frame(width: UIScreen.main.bounds.width * 0.75,
+               height: UIScreen.main.bounds.width * 0.75)
+        // The background, clipShape and shadow here were for the container of the gauge.
+        // The new styling applies *inside* the CircularGaugeView.
+        // We might want to keep a container background for contrast, or remove it if the gauge's own bg is sufficient.
+        // For now, let's remove the explicit container styling to let the gauge's style shine.
+        // .background(.ultraThinMaterial) // This would be behind the gauge's own background
+        // .clipShape(Circle())
+        // .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
     }
 
     private var stats: some View {
