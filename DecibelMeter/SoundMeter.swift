@@ -45,6 +45,6 @@ class SoundMeter: ObservableObject {
         let rms = sqrt(sumSquares / Float(count) + Float.ulpOfOne)
         // dBFS then normalize into 0–100
         let db = 20 * log10(rms)
-        return max(db + 100, 0)                         // clamp at 0 min :contentReference[oaicite:0]{index=0}
+        return max(db + 100, 0)                         // clamp at minimum 0
     }
 }
