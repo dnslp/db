@@ -73,7 +73,7 @@ final class AudioMeter: ObservableObject {
     func resume()  { if running { try? engine.start() } }
 
     // MARK: internals
-    private func resetStats() { level = 0; avg = 0; peak = 0; minDecibels = 140; sampleCount = 0 }
+    func resetStats() { level = 0; avg = 0; peak = 0; minDecibels = 140; sampleCount = 0 } // Made internal
 
     private func prepareSession() throws {
         let s = AVAudioSession.sharedInstance()
@@ -213,7 +213,7 @@ struct SpectrumView: View {
                         )
                     }
                 }
-                .animation(.spring(duration: 0.2, bounce: 0.0), value: data) // Apply animation here
+                // .animation(.spring(duration: 0.2, bounce: 0.0), value: data) // Temporarily removed for testing type-checking
 
                 // Frequency tick labels
                 ForEach(FREQ_LABELS, id: \.self) { f in
@@ -464,6 +464,7 @@ struct ContentView: View {
         }
     }
 }
+} // Closing brace for ContentView struct
 
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
