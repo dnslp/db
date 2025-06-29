@@ -202,15 +202,7 @@ struct SpectrumView: View {
                             let y2 = geo.size.height - CGFloat(data[i+1]) * yScale
                             path.addLine(to: CGPoint(x: x2, y: y2))
                         }
-                        .stroke(
-                            LinearGradient(
-                                gradient: Gradient(colors: [segmentColor(for: data[i], maxVal: maxVal).opacity(segmentOpacity(for: data[i], maxVal: maxVal)),
-                                                            segmentColor(for: data[i+1], maxVal: maxVal).opacity(segmentOpacity(for: data[i+1], maxVal: maxVal))]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            lineWidth: segmentLineWidth(for: data[i], maxVal: maxVal)
-                        )
+                        .stroke(Color.blue, lineWidth: 1) // Simplified stroke for testing
                     }
                 }
                 // .animation(.spring(duration: 0.2, bounce: 0.0), value: data) // Temporarily removed for testing type-checking
@@ -464,7 +456,6 @@ struct ContentView: View {
         }
     }
 }
-} // Closing brace for ContentView struct
 
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
