@@ -191,18 +191,12 @@ struct SpectrumView: View {
                 Group { // Group to apply animation to the chart elements
                     if data.count > 1 {
                     ForEach(0..<data.count - 1, id: \.self) { i in
-                        Path { path in
-                            let freq1 = frequencyForIndex(i, totalCount: data.count, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq)
-                            let x1 = xPosition(forFrequency: freq1, totalWidth: viewWidth, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq)
-                            let y1 = geo.size.height - CGFloat(data[i]) * yScale
-                            path.move(to: CGPoint(x: x1, y: y1))
-
-                            let freq2 = frequencyForIndex(i + 1, totalCount: data.count, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq)
-                            let x2 = xPosition(forFrequency: freq2, totalWidth: viewWidth, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq)
-                            let y2 = geo.size.height - CGFloat(data[i+1]) * yScale
-                            path.addLine(to: CGPoint(x: x2, y: y2))
-                        }
-                        .stroke(Color.blue, lineWidth: 1) // Simplified stroke for testing
+                        // Further simplified: Replacing Path with Rectangle for diagnostics
+                        Rectangle()
+                            .fill(Color.red)
+                            .frame(width: 2, height: (geo.size.height - CGFloat(data[i]) * yScale) * 0.1 + 1) // Arbitrary height based on data
+                            .position(x: xPosition(forFrequency: frequencyForIndex(i, totalCount: data.count, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq), totalWidth: viewWidth, minFreq: minDisplayFreq, maxFreq: maxDisplayFreq),
+                                      y: geo.size.height - (CGFloat(data[i]) * yScale / 2) ) // Position vaguely
                     }
                 }
                 // .animation(.spring(duration: 0.2, bounce: 0.0), value: data) // Temporarily removed for testing type-checking
@@ -456,7 +450,8 @@ struct ContentView: View {
         }
     }
 }
-
+} // Closing brace for ContentView struct
+/*
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
@@ -464,3 +459,4 @@ struct ContentView_Previews: PreviewProvider {
             .previewDevice("iPhone 14 Pro")
     }
 }
+*/
