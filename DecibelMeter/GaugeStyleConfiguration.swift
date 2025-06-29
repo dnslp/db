@@ -1,5 +1,13 @@
 import SwiftUI
 
+// Enum for Gauge Display Type
+enum GaugeDisplayType: String, CaseIterable, Identifiable, Codable {
+    case circular = "Circular"
+    case vertical = "Vertical"
+
+    var id: String { self.rawValue }
+}
+
 // To enable Picker for Material, we need a identifiable wrapper if we want "None" option.
 // However, standard Materials are already hashable. We might need a wrapper if we include a "None" case.
 // For now, let's assume direct use or a simple enum if "None" is critical.
@@ -127,6 +135,7 @@ struct GaugeStyleConfiguration: Codable { // Added Codable
     var shadowY: CGFloat = 2.0
     private var _textColor: CodableColor = CodableColor(color: .primary)
     var selectedFontDesign: SelectableFontDesign = .rounded
+    var displayType: GaugeDisplayType = .circular // New property for gauge type
 
     // Public computed properties for Color types, using the private CodableColor properties
     var gaugeBackgroundColor: Color {
@@ -156,6 +165,7 @@ struct GaugeStyleConfiguration: Codable { // Added Codable
         case shadowY
         case _textColor = "textColor"
         case selectedFontDesign
+        case displayType // Added displayType
     }
 
 

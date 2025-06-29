@@ -7,6 +7,14 @@ struct GaugeStyleEditorView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Gauge Type")) {
+                    Picker("Display Type", selection: $config.displayType) {
+                        ForEach(GaugeDisplayType.allCases) { type in
+                            Text(type.rawValue).tag(type)
+                        }
+                    }
+                }
+
                 Section(header: Text("Background Style")) {
                     ColorPicker("Background Color", selection: $config.gaugeBackgroundColor)
 

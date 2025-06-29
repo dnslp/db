@@ -308,19 +308,35 @@ struct ContentView: View {
     }
 
     private var customizableGauge: some View { // Renamed
-        CircularGaugeView(
-            level: meter.level,
-            gaugeBackgroundColor: gaugeStyleConfig.gaugeBackgroundColor,
-            gaugeBackgroundMaterial: gaugeStyleConfig.gaugeBackgroundMaterial,
-            progressArcColors: gaugeStyleConfig.progressArcColors,
-            progressArcStrokeStyle: gaugeStyleConfig.progressArcStrokeStyle,
-            showShadow: gaugeStyleConfig.showShadow, // Pass the simple boolean
-            customShadow: gaugeStyleConfig.customShadow, // Pass the detailed struct
-            textColor: gaugeStyleConfig.textColor,
-            fontDesign: gaugeStyleConfig.fontDesign
-        )
-        .frame(width: UIScreen.main.bounds.width * 0.75,
-               height: UIScreen.main.bounds.width * 0.75)
+        Group {
+            switch gaugeStyleConfig.displayType {
+            case .circular:
+                CircularGaugeView(
+                    level: meter.level,
+                    gaugeBackgroundColor: gaugeStyleConfig.gaugeBackgroundColor,
+                    gaugeBackgroundMaterial: gaugeStyleConfig.gaugeBackgroundMaterial,
+                    progressArcColors: gaugeStyleConfig.progressArcColors,
+                    progressArcStrokeStyle: gaugeStyleConfig.progressArcStrokeStyle,
+                    showShadow: gaugeStyleConfig.showShadow,
+                    customShadow: gaugeStyleConfig.customShadow,
+                    textColor: gaugeStyleConfig.textColor,
+                    fontDesign: gaugeStyleConfig.fontDesign
+                )
+                .frame(width: UIScreen.main.bounds.width * 0.75,
+                       height: UIScreen.main.bounds.width * 0.75)
+            case .vertical:
+                VerticalGaugeView(
+                    level: meter.level,
+                    styleConfig: gaugeStyleConfig
+                )
+                // For vertical, we might want a different aspect ratio, e.g., taller.
+                // Let's start with a similar width but potentially more height, or let it be more flexible.
+                // Using a fixed height for now, similar to circular, for consistency in the layout.
+                // This can be adjusted based on visual results.
+                .frame(width: UIScreen.main.bounds.width * 0.5, // Narrower for vertical
+                       height: UIScreen.main.bounds.width * 0.75) // Similar height
+            }
+        }
         // The background, clipShape and shadow here were for the container of the gauge.
         // The new styling applies *inside* the CircularGaugeView.
         // We might want to keep a container background for contrast, or remove it if the gauge's own bg is sufficient.
