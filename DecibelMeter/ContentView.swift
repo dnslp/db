@@ -28,6 +28,7 @@ final class AudioMeter: ObservableObject {
     @Published var level: Float = 0   // smoothed 0…140
     @Published var avg:   Float = 0
     @Published var peak:  Float = 0
+    @Published var min:   Float = 140 // Initialize with a high value
     @Published var spectrum: [Float] = Array(repeating: 0, count: 60)
 
     private var sampleCount = 0
@@ -56,7 +57,7 @@ final class AudioMeter: ObservableObject {
     func resume()  { if running { try? engine.start() } }
 
     // MARK: internals
-    private func resetStats() { level = 0; avg = 0; peak = 0; sampleCount = 0 }
+    private func resetStats() { level = 0; avg = 0; peak = 0; min = 140; sampleCount = 0 }
 
     private func prepareSession() throws {
         let s = AVAudioSession.sharedInstance()
@@ -76,7 +77,7 @@ final class AudioMeter: ObservableObject {
         var db = max(20 * log10(rms)+100+CAL_OFFSET, 0)
         db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
         level = level*0.75 + db*0.25
-        sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db)
+        sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db); min = min(self.min, db)
         // FFT 60 bins
         var win = [Float](repeating: 0, count: 1024)
         vDSP_vmul(ch, 1, window, 1, &win, 1, 1024)
@@ -107,22 +108,39 @@ struct SpectrumView: View {
     let data: [Float]
     var body: some View {
         GeometryReader { geo in
-            let barW = geo.size.width / CGFloat(data.count)
             let maxVal = data.max() ?? 1
+            let yScale = geo.size.height / (maxVal > 0 ? CGFloat(maxVal) : 1) // Avoid division by zero if maxVal is 0
+            let xScale = geo.size.width / CGFloat(data.count - 1 > 0 ? data.count - 1 : 1) // Avoid division by zero for single data point
+
             ZStack(alignment: .bottomLeading) {
-                HStack(alignment: .bottom, spacing: barW*0.2) {
-                    ForEach(data.indices, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: barW*0.2)
-                            .fill(Color.accentColor.opacity(0.75))
-                            .frame(width: barW*0.8, height: geo.size.height * CGFloat(data[i]/maxVal))
+                // Line Chart Path
+                Path { path in
+                    guard !data.isEmpty else { return }
+
+                    // Move to the starting point
+                    path.move(to: CGPoint(x: 0, y: geo.size.height - CGFloat(data[0]) * yScale))
+
+                    // Draw lines to subsequent points
+                    for i in 1..<data.count {
+                        let x = CGFloat(i) * xScale
+                        let y = geo.size.height - CGFloat(data[i]) * yScale
+                        path.addLine(to: CGPoint(x: x, y: y))
                     }
                 }
+                .stroke(Color.accentColor.opacity(0.75), lineWidth: 2)
+
                 // Frequency tick labels
                 ForEach(FREQ_LABELS, id: \.self) { f in
-                    let x = geo.size.width * CGFloat(log10(Double(f)/50)/log10(400)) // crude log mapping
+                    // Adjust log mapping if necessary, ensure it aligns with the chart's x-axis
+                    let xPosRatio = log10(Double(f)/Double(FREQ_LABELS.first ?? 50)) / log10(Double(FREQ_LABELS.last ?? 20000)/Double(FREQ_LABELS.first ?? 50))
+                    let x = geo.size.width * CGFloat(xPosRatio)
+
+                    // Ensure labels are within bounds
+                    let labelX = min(max(x, 0), geo.size.width - 10) // Basic boundary check
+
                     Text(f < 1000 ? "\(f)" : "\(f/1000)k")
                         .font(.caption2).foregroundColor(.secondary)
-                        .position(x: x, y: geo.size.height+10)
+                        .position(x: labelX, y: geo.size.height + 12) // Adjusted y position for better spacing
                 }
             }
         }
@@ -186,20 +204,38 @@ struct ContentView: View {
     }
 
     private var stats: some View {
-        HStack(spacing: 40) {
+        HStack(spacing: 20) { // Adjusted spacing to accommodate the new box
+            statBox("MIN", Int(meter.min))
             statBox("AVG", Int(meter.avg))
             statBox("MAX", Int(meter.peak))
         }
     }
     private func statBox(_ title: String, _ val: Int) -> some View {
-        VStack {
+        let color: Color
+        switch title {
+        case "MIN":
+            color = .blue
+        case "AVG":
+            color = .green
+        case "MAX":
+            color = .orange
+        default:
+            color = .gray // Fallback color
+        }
+
+        return VStack {
             Text(title).font(.caption2).foregroundColor(.secondary)
             Text("\(val)").font(.title).bold().monospacedDigit()
+                .foregroundColor(color) // Apply color to the value text
         }
         .padding(16)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 20)) // Increased corner radius
-        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4) // Added shadow
+        .background(.ultraThinMaterial) // Base material
+        .overlay( // Overlay for accent color border or background tint
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(color.opacity(0.5), lineWidth: 2) // Accent border
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
     }
 
     private var actionButton: some View {
