@@ -80,6 +80,73 @@ struct CircularGaugeView: View {
         return Color(hue: last.h, saturation: last.s, brightness: last.b)
     }
 
+    private func getContextualText(for level: Float) -> String {
+        let level = Int(level) // Work with integer decibel levels
+        switch level {
+        // Home
+        case 0..<40: return "Quiet Environment" // Added a default for very low levels
+        case 40..<50: return "Quiet Office, Library / Quiet Residential Area"
+        case 50: return "Refrigerator / Large Office"
+        case 51..<55: return "Electric Toothbrush"
+        case 55: return "Coffee Percolator / Electric Toothbrush"
+        case 56..<60: return "Dishwasher / Electric Toothbrush"
+        case 60: return "Sewing Machine / Electric Toothbrush / Vacuum Cleaner / Hair Dryer"
+        case 61..<65: return "Vacuum Cleaner / Hair Dryer"
+        case 65: return "Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower"
+        case 66..<70: return "Alarm Clock / Dishwasher / Vacuum Cleaner / Hair Dryer / Power Lawn Mower"
+        case 70: return "TV Audio / Coffee Grinder / Garbage Disposal / Alarm Clock / Dishwasher / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
+        case 71..<75: return "Washing Machine / Air Conditioner / Coffee Grinder / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
+        case 75: return "Washing Machine / Air Conditioner / Flush Toilet / Coffee Grinder / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
+        case 76..<80: return "Electric Shaver / Flush Toilet / Coffee Grinder / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
+        case 80: return "Pop-Up Toaster / Doorbell / Ringing Telephone / Whistling Kettle / Food Mixer or Processor / Blender / Electric Shaver / Flush Toilet / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Manual Machine, Tools / Power Lawn Mower / Freeway Traffic"
+        case 81..<85: return "Food Mixer or Processor / Blender / Electric Shaver / Flush Toilet / Vacuum Cleaner / Hair Dryer / Manual Machine, Tools / Power Lawn Mower / Heavy Traffic, Noisy Restaurant"
+        case 85: return "Handsaw / Food Mixer or Processor / Blender / Vacuum Cleaner / Hair Dryer / Heavy Traffic, Noisy Restaurant / Power Lawn Mower"
+        // Work & Recreation
+        case 86..<90: return "Food Mixer or Processor / Blender / Hair Dryer / Tractor / Truck, Shouted Conversation / Power Lawn Mower"
+        case 90: return "Tractor / Subway / Truck, Shouted Conversation / Hair Dryer / Power Lawn Mower"
+        case 91..<95: return "Subway / Electric drill / Hair Dryer / Power Lawn Mower / Motorcycle"
+        case 95: return "Electric drill / Power Lawn Mower / Motorcycle"
+        case 96..<100: return "Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
+        case 100: return "Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
+        case 101..<105: return "Snow Blower / Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
+        case 105: return "Snow Blower / Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
+        case 106..<110: return "Power Saw / Leaf Blower / Subway / Music Club, Disco / Busy Video Arcade / Symphony Concert / Car Horn / Motorcycle / Rock Concert"
+        case 110: return "Baby Crying / Squeaky Toy Held Close to Ear / Power Saw / Leaf Blower / Subway / Music Club, Disco / Busy Video Arcade / Symphony Concert / Car Horn / Motorcycle / Rock Concert"
+        case 111..<112: return "Subway / Personal Music Player on High / Rock Concert"
+        case 112: return "Subway / Personal Music Player on High / Rock Concert"
+        case 113..<115: return "Subway / Rock Concert"
+        case 115: return "Subway / Rock Concert" // End of subway range
+        case 116..<117: return "Football Game Stadium / Rock Concert"
+        case 117: return "Football Game Stadium / Rock Concert"
+        case 118..<120: return "Rock Concert / Band Concert"
+        case 120: return "Chainsaw, Hammer On Nail / Pneumatic Drills, Heavy Machine / Jet Plane at Ramp / Ambulance Siren / Band Concert"
+        case 121..<125: return "Chainsaw, Hammer On Nail / Pneumatic Drills, Heavy Machine / Jet Plane at Ramp / Ambulance Siren / Auto Stereo"
+        case 125: return "Chainsaw, Hammer On Nail / Pneumatic Drills, Heavy Machine / Jet Plane at Ramp / Ambulance Siren / Auto Stereo"
+        case 126..<130: return "Jackhammer, Power Drill / Air Raid / Percussion Section at Symphony / Stock Car Races"
+        case 130: return "Jackhammer, Power Drill / Air Raid / Percussion Section at Symphony / Stock Car Races"
+        case 131..<135: return "Noisy Squeeze Toys"
+        case 135: return "Noisy Squeeze Toys"
+        case 136..<140: return "Airplane Taking Off"
+        case 140: return "Airplane Taking Off"
+        case 141..<143: return "Bicycle Horn"
+        case 143: return "Bicycle Horn"
+        case 144..<150: return "Firecracker / Jet Engine Taking Off / Artillery Fire at 500 Feet"
+        case 150: return "Firecracker / Jet Engine Taking Off / Artillery Fire at 500 Feet"
+        case 151..<156: return "Cap Gun"
+        case 156: return "Cap Gun"
+        case 157: return "Balloon Pop"
+        case 158..<162: return "Fireworks (at 3 Feet)"
+        case 162: return "Fireworks (at 3 Feet)"
+        case 163: return "Rifle"
+        case 164..<166: return "Handgun, Shotgun"
+        case 166..<170: return "Handgun, Shotgun"
+        case 170...188: return "Handgun, Shotgun" // Max for handgun/shotgun up to rocket
+        case 189...: return "Rocket Launching from Pad" // From 189 upwards
+        default:
+            return "Very Loud" // Default for levels not explicitly covered or above 189
+        }
+    }
+
     // Determines the colors for the progress arc gradient.
     // Uses `progressArcColors` if provided, otherwise generates dynamic colors.
     private var currentProgressArcColors: [Color] {
@@ -128,9 +195,16 @@ struct CircularGaugeView: View {
                     )
                     .rotationEffect(.degrees(-90))
 
-                Text("\(Int(level)) dB")
-                    .font(.system(size: size * 0.2, weight: .bold, design: fontDesign ?? .rounded)) // Use new property
-                    .foregroundColor(textColor) // Use new property (nil means default)
+                VStack {
+                    Text("\(Int(level)) dB")
+                        .font(.system(size: size * 0.2, weight: .bold, design: fontDesign ?? .rounded)) // Use new property
+                        .foregroundColor(textColor) // Use new property (nil means default)
+                    Text(getContextualText(for: level))
+                        .font(.system(size: size * 0.05, weight: .medium, design: fontDesign ?? .rounded))
+                        .foregroundColor(textColor)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, size * 0.02)
+                }
             }
             .frame(width: size, height: size)
             .shadow(
