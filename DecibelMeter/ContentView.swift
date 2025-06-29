@@ -189,12 +189,12 @@ struct ContentView: View {
 
     private var stats: some View {
         HStack(spacing: 20) { // Reduced spacing to accommodate three items
-            statBox("MIN", Int(meter.minDecibels == Float.greatestFiniteMagnitude ? 0 : meter.minDecibels)) // Display 0 if minDecibels is still initial value
-            statBox("AVG", Int(meter.avg))
-            statBox("MAX", Int(meter.peak))
+            statBox("MIN", Int(meter.minDecibels == Float.greatestFiniteMagnitude ? 0 : meter.minDecibels), borderColor: .blue) // Display 0 if minDecibels is still initial value
+            statBox("AVG", Int(meter.avg), borderColor: .orange)
+            statBox("MAX", Int(meter.peak), borderColor: .red)
         }
     }
-    private func statBox(_ title: String, _ val: Int) -> some View {
+    private func statBox(_ title: String, _ val: Int, borderColor: Color) -> some View {
         VStack {
             Text(title).font(.caption2).foregroundColor(.secondary)
             Text("\(val)").font(.title).bold().monospacedDigit()
@@ -202,6 +202,10 @@ struct ContentView: View {
         .padding(16)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20)) // Increased corner radius
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(borderColor, lineWidth: 2)
+        )
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4) // Added shadow
     }
 
