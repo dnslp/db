@@ -217,7 +217,7 @@ struct ContentView: View {
     // MARK: – Permission helper
     @MainActor private func requestMic() async {
         if #available(iOS 17, *) {
-            micGranted = await AVAudioApplication.shared.requestRecordPermission()
+            micGranted = await AVAudioApplication.requestRecordPermission()
         } else {
             micGranted = await withCheckedContinuation { cont in
                 AVAudioSession.sharedInstance().requestRecordPermission { ok in cont.resume(returning: ok) }
