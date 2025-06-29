@@ -28,6 +28,7 @@ final class AudioMeter: ObservableObject {
     @Published var level: Float = 0   // smoothed 0…140
     @Published var avg:   Float = 0
     @Published var peak:  Float = 0
+    @Published var min:   Float = Float.greatestFiniteMagnitude
     @Published var spectrum: [Float] = Array(repeating: 0, count: 60)
 
     private var sampleCount = 0
@@ -56,7 +57,7 @@ final class AudioMeter: ObservableObject {
     func resume()  { if running { try? engine.start() } }
 
     // MARK: internals
-    private func resetStats() { level = 0; avg = 0; peak = 0; sampleCount = 0 }
+    private func resetStats() { level = 0; avg = 0; peak = 0; min = Float.greatestFiniteMagnitude; sampleCount = 0 }
 
     private func prepareSession() throws {
         let s = AVAudioSession.sharedInstance()
@@ -76,7 +77,7 @@ final class AudioMeter: ObservableObject {
         var db = max(20 * log10(rms)+100+CAL_OFFSET, 0)
         db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
         level = level*0.75 + db*0.25
-        sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db)
+        sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db); min = Swift.min(min, db)
         // FFT 60 bins
         var win = [Float](repeating: 0, count: 1024)
         vDSP_vmul(ch, 1, window, 1, &win, 1, 1024)
@@ -146,6 +147,7 @@ struct ContentView: View {
                     .frame(height: 100)
                     .padding(.horizontal)
                 actionButton
+                resetButton // Add the new reset button here
             }
             .padding()
         }
@@ -186,7 +188,8 @@ struct ContentView: View {
     }
 
     private var stats: some View {
-        HStack(spacing: 40) {
+        HStack(spacing: 20) { // Reduced spacing to accommodate three items
+            statBox("MIN", Int(meter.min == Float.greatestFiniteMagnitude ? 0 : meter.min)) // Display 0 if min is still initial value
             statBox("AVG", Int(meter.avg))
             statBox("MAX", Int(meter.peak))
         }
@@ -213,6 +216,14 @@ struct ContentView: View {
             }
         }
         .buttonStyle(.borderedProminent)
+        .font(.headline)
+    }
+
+    private var resetButton: some View {
+        Button("Reset Stats") {
+            meter.resetStats()
+        }
+        .buttonStyle(.bordered) // Using a different style to distinguish from Start/Stop
         .font(.headline)
     }
 
