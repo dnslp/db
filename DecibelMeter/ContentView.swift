@@ -170,9 +170,11 @@ struct ContentView: View {
     }
 
     private var scalableGauge: some View {
+
         CircularGaugeView(level: meter.level)
             .frame(width: UIScreen.main.bounds.width * 0.75,
                    height: UIScreen.main.bounds.width * 0.75)
+
             .background(.ultraThinMaterial)
             .clipShape(Circle())
     }
