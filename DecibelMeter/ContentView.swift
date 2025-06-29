@@ -74,7 +74,7 @@ final class AudioMeter: ObservableObject {
         var power: Float = 0; vDSP_measqv(ch, 1, &power, vDSP_Length(n))
         let rms = sqrt(power + Float.ulpOfOne)
         var db = max(20 * log10(rms)+100+CAL_OFFSET, 0)
-        db = min(db*1.4, 140)
+        db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
         level = level*0.75 + db*0.25
         sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db)
         // FFT 60 bins
