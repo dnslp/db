@@ -309,6 +309,7 @@ struct ContentView: View {
 
     private var customizableGauge: some View { // Renamed
         Group {
+            let _ = print("ContentView: customizableGauge evaluating. Current displayType: \(gaugeStyleConfig.displayType)")
             switch gaugeStyleConfig.displayType {
             case .circular:
                 CircularGaugeView(

@@ -134,7 +134,9 @@ struct VerticalGaugeView: View {
     }
 
     var body: some View {
+        let _ = print("VerticalGaugeView body executing. Level: \(level)")
         GeometryReader { geo in
+            let _ = print("VerticalGaugeView GeometryReader executing. Size: \(geo.size)")
             let barWidth = geo.size.width * 0.5 // Example: bar takes 50% of available width
             let barHeight = geo.size.height * 0.7 // Example: bar area takes 70% of available height
             let cornerRadius = barWidth * 0.1 // Dynamic corner radius

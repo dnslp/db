@@ -13,6 +13,9 @@ struct GaugeStyleEditorView: View {
                             Text(type.rawValue).tag(type)
                         }
                     }
+                    .onChange(of: config.displayType) { oldValue, newValue in
+                        print("GaugeStyleEditorView: displayType changed from \(oldValue) to \(newValue)")
+                    }
                 }
 
                 Section(header: Text("Background Style")) {

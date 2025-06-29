@@ -164,6 +164,7 @@ struct CircularGaugeView: View {
     }
 
     var body: some View {
+        let _ = print("CircularGaugeView body executing. Level: \(level)")
         GeometryReader { geo in
             let size = geo.size.width * 0.75
             let defaultLineWidth = size * 0.05
