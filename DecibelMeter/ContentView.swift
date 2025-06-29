@@ -86,7 +86,7 @@ final class AudioMeter: ObservableObject {
         vDSP_vmul(ch, 1, window, 1, &win, 1, 1024)
         var r = [Float](repeating: 0, count: 1024)
         var i = [Float](repeating: 0, count: 1024)
-        var zero = [Float](repeating: 0, count: 1024)
+        let zero = [Float](repeating: 0, count: 1024)
         win.withUnsafeBufferPointer { rp in
             zero.withUnsafeBufferPointer { ip in
                 r.withUnsafeMutableBufferPointer { rOut in
