@@ -74,7 +74,7 @@ final class AudioMeter: ObservableObject {
         var power: Float = 0; vDSP_measqv(ch, 1, &power, vDSP_Length(n))
         let rms = sqrt(power + Float.ulpOfOne)
         var db = max(20 * log10(rms)+100+CAL_OFFSET, 0)
-        db = min(db*1.4, 140)
+        db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
         level = level*0.75 + db*0.25
         sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db)
         // FFT 60 bins
@@ -163,9 +163,14 @@ struct ContentView: View {
             .font(.headline)
             .padding(.vertical, 8)
             .padding(.horizontal, 16)
-            .background((meter.level < SAFE_THRESHOLD ? Color.green : Color.red).opacity(0.15))
-            .foregroundColor(meter.level < SAFE_THRESHOLD ? .green : .red)
-            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .background { // Layer background effects for glass look
+                RoundedRectangle(cornerRadius: 25) // Shape for material and color
+                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 25)
+                    .fill((meter.level < SAFE_THRESHOLD ? Color.green : Color.red).opacity(0.25)) // Color layer
+            }
+            .foregroundColor(meter.level < SAFE_THRESHOLD ? .green : .red) // Keep text/icon color distinct
+            .clipShape(RoundedRectangle(cornerRadius: 25)) // Clip to the new radius
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -177,6 +182,7 @@ struct ContentView: View {
 
             .background(.ultraThinMaterial)
             .clipShape(Circle())
+            .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5) // Added shadow
     }
 
     private var stats: some View {
@@ -192,7 +198,8 @@ struct ContentView: View {
         }
         .padding(16)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: 20)) // Increased corner radius
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4) // Added shadow
     }
 
     private var actionButton: some View {
