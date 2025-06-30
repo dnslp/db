@@ -232,12 +232,23 @@ final class AudioMeter: ObservableObject {
         db_A = max(db_A, 0)
         db_A = min(db_A, 140) // Cap at 140 dB
 
-        // Update published level and stats
-        level = level*0.75 + db_A*0.25 // Smoothing
-        sampleCount += 1
-        avg += (db_A - avg) / Float(sampleCount)
-        peak = max(peak, db_A)
-        minDecibels = Swift.min(minDecibels, db_A)
+        // Update published level and stats on the main thread
+        let final_db_A = db_A // Use a final capture for the async block
+        DispatchQueue.main.async {
+            self.level = self.level*0.75 + final_db_A*0.25 // Smoothing
+            self.sampleCount += 1 // sampleCount is not @Published, but accessed on main thread if avg/peak/min are.
+                                 // Better to update it here if it's involved in calculations for other @Published vars.
+                                 // Or, pass final_db_A to main thread and do all calculations there.
+                                 // For simplicity here, let's assume sampleCount is mainly for avg.
+
+            // If sampleCount is used to calculate avg, it needs to be consistent.
+            // Let's make a local calculation for newAvg and update.
+            let newAvg = self.avg + (final_db_A - self.avg) / Float(self.sampleCount) // Calculate new average
+
+            self.avg = newAvg
+            self.peak = max(self.peak, final_db_A)
+            self.minDecibels = Swift.min(self.minDecibels, final_db_A)
+        }
 
         // Update spectrum display data using A-weighted magnitudes
         // The magsAWeighted are already scaled by N=1024 and weighted.
