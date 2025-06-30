@@ -118,77 +118,58 @@ final class AudioMeter: ObservableObject {
 // MARK: - EQ Settings View
 struct EQSettingsView: View {
     @Binding var numberOfBands: Float
-    @Binding var animationSpeed: Double // Example: 0.1 to 1.0
-    @Binding var lineSmoothness: Int    // Example: 1 to 10
-    @Binding var calibrationOffset: Float // Added for calibration
+    @Binding var calibrationOffset: Float
+
+    // Bindings for ParametricEQVisualizerView
+    @Binding var eqLineColor: Color
+    @Binding var eqFillColor: Color
+    @Binding var eqOpacity: Double
+    @Binding var eqLineWidth: CGFloat
+    @Binding var eqBackgroundColor: Color
 
     var body: some View {
-        VStack {
-            VStack(alignment: .leading, spacing: 10) { // Align text to leading, add spacing
-                HStack {
-                    Text("Bands:").frame(width: 80, alignment: .leading) // Fixed width for label
-                    Slider(value: $numberOfBands, in: 10...100, step: 1)
-                    Text("\(Int(numberOfBands))").frame(width: 30, alignment: .trailing) // Fixed width for value
-                }
-                HStack {
-                    Text("Speed:").frame(width: 80, alignment: .leading)
-                    Slider(value: $animationSpeed, in: 0.1...1.0, step: 0.1)
-                    Text(String(format: "%.1f", animationSpeed)).frame(width: 30, alignment: .trailing)
-                }
-                HStack {
-                    Text("Smoothness:").frame(width: 80, alignment: .leading)
-                    Slider(value: .init(get: { Float(lineSmoothness) }, set: { lineSmoothness = Int($0) }), in: 1...10, step: 1)
-                    Text("\(lineSmoothness)").frame(width: 30, alignment: .trailing)
-                }
-                HStack {
-                    Text("Calibrate:").frame(width: 80, alignment: .leading)
-                    Slider(value: $calibrationOffset, in: -20...20, step: 0.5) // Example range, adjust as needed
-                    Text(String(format: "%.1f", calibrationOffset)).frame(width: 40, alignment: .trailing) // Adjusted width
-                }
+        VStack(alignment: .leading, spacing: 15) { // Increased spacing for better layout
+            // General Settings
+            Text("General").font(.headline).padding(.top, 5)
+            HStack {
+                Text("Bands:").frame(width: 100, alignment: .leading)
+                Slider(value: $numberOfBands, in: 10...100, step: 1)
+                Text("\(Int(numberOfBands))").frame(width: 40, alignment: .trailing)
             }
-            .padding(.vertical, 5) // Reduced vertical padding inside the group
-        }
-        .padding(.horizontal) // Keep horizontal padding for the DisclosureGroup itself
-    }
-}
+            HStack {
+                Text("Calibrate:").frame(width: 100, alignment: .leading)
+                Slider(value: $calibrationOffset, in: -20...20, step: 0.5)
+                Text(String(format: "%.1f", calibrationOffset)).frame(width: 40, alignment: .trailing)
+            }
 
-// MARK: - Spectrum with labels
-struct SpectrumView: View {
-    let data: [Float]
-    var animationSpeed: Double
-    var lineSmoothness: Int // Higher value means smoother, less segmented lines
+            Divider().padding(.vertical, 5)
 
-    var body: some View {
-        GeometryReader { geo in
-            if data.isEmpty {
-                Text("No data") // Handle empty data case
-            } else {
-                let barW = geo.size.width / CGFloat(data.count)
-                let maxVal = data.max() ?? 1
-                // Adjust corner radius based on lineSmoothness.
-                // Smaller barW might need smaller radius.
-                let cornerRadiusFactor = CGFloat(lineSmoothness) / 10.0 // Normalize smoothness to 0.1 - 1.0
-                let cornerRadius = barW * 0.2 * cornerRadiusFactor
+            // Visualizer Appearance Settings
+            Text("Visualizer Appearance").font(.headline)
 
-                ZStack(alignment: .bottomLeading) {
-                    HStack(alignment: .bottom, spacing: barW * 0.2) {
-                        ForEach(data.indices, id: \.self) { i in
-                            RoundedRectangle(cornerRadius: cornerRadius)
-                                .fill(Color.accentColor.opacity(0.75))
-                                .frame(width: barW * 0.8, height: geo.size.height * CGFloat(data[i] / maxVal))
-                                .animation(.linear(duration: animationSpeed), value: data[i]) // Apply animation
-                        }
-                    }
-                    // Frequency tick labels
-                    ForEach(FREQ_LABELS, id: \.self) { f in
-                        let x = geo.size.width * CGFloat(log10(Double(f)/50)/log10(400)) // crude log mapping
-                        Text(f < 1000 ? "\(f)" : "\(f/1000)k")
-                            .font(.caption2).foregroundColor(.secondary)
-                            .position(x: x, y: geo.size.height+10)
-                    }
-                }
+            ColorPicker("Line Color", selection: $eqLineColor)
+                .frame(height: 30) // Adjust height for better spacing
+
+            ColorPicker("Fill Color", selection: $eqFillColor)
+                .frame(height: 30)
+
+            ColorPicker("Background Color", selection: $eqBackgroundColor)
+                .frame(height: 30)
+
+            HStack {
+                Text("Opacity:").frame(width: 100, alignment: .leading)
+                Slider(value: $eqOpacity, in: 0.0...1.0, step: 0.05)
+                Text(String(format: "%.2f", eqOpacity)).frame(width: 40, alignment: .trailing)
+            }
+
+            HStack {
+                Text("Line Width:").frame(width: 100, alignment: .leading)
+                Slider(value: $eqLineWidth, in: 0.5...10.0, step: 0.5)
+                Text(String(format: "%.1f", eqLineWidth)).frame(width: 40, alignment: .trailing)
             }
         }
+        .padding(.horizontal)
+        .padding(.bottom, 5) // Add some padding at the bottom of the Vstack
     }
 }
 
@@ -202,9 +183,17 @@ struct ContentView: View {
     // EQ Settings state variables
     @State private var showEQSettings = false
     @State private var numberOfBands: Float = 60 // Default value, matching current spectrum
-    @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
-    @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
+    // @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed - Will be handled by ParametricEQVisualizerView's own animation
+    // @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness - Will be handled by ParametricEQVisualizerView
     @State private var calibrationOffsetValue: Float = -7.0 // Default, will sync with meter
+
+    // Parametric EQ Visualizer Settings
+    @State private var eqLineColor: Color = .accentColor
+    @State private var eqFillColor: Color = .accentColor.opacity(0.3)
+    @State private var eqOpacity: Double = 0.8
+    @State private var eqLineWidth: CGFloat = 2.0
+    @State private var eqBackgroundColor: Color = Color(.systemGray6)
+
 
     // AppStorage for the gauge style configuration
     @AppStorage("gaugeStyleConfig") private var gaugeStyleConfigData: Data?
@@ -218,10 +207,17 @@ struct ContentView: View {
                 header
                 customizableGauge // Renamed from scalableGauge
                 stats
-                SpectrumView(data: meter.spectrum, animationSpeed: animationSpeed, lineSmoothness: lineSmoothness)
-                    .frame(height: 100)
-                    .padding(.horizontal)
-                    .onChange(of: numberOfBands) { oldValue, newValue in
+                ParametricEQVisualizerView(
+                    data: meter.spectrum,
+                    lineColor: eqLineColor,
+                    fillColor: eqFillColor,
+                    opacity: eqOpacity,
+                    lineWidth: eqLineWidth,
+                    backgroundColor: eqBackgroundColor
+                )
+                .frame(height: 150) // Increased height for better visualization
+                .padding(.horizontal)
+                .onChange(of: numberOfBands) { oldValue, newValue in
                         // Restart meter with new number of bands if it's running
                         if running {
                             meter.stop()
@@ -234,11 +230,15 @@ struct ContentView: View {
                     }
 
                 DisclosureGroup("EQ Settings", isExpanded: $showEQSettings) {
+                    // Pass the new EQ settings bindings to EQSettingsView
                     EQSettingsView(
                         numberOfBands: $numberOfBands,
-                        animationSpeed: $animationSpeed,
-                        lineSmoothness: $lineSmoothness,
-                        calibrationOffset: $calibrationOffsetValue
+                        calibrationOffset: $calibrationOffsetValue,
+                        eqLineColor: $eqLineColor,
+                        eqFillColor: $eqFillColor,
+                        eqOpacity: $eqOpacity,
+                        eqLineWidth: $eqLineWidth,
+                        eqBackgroundColor: $eqBackgroundColor
                     )
                     .onChange(of: calibrationOffsetValue) { oldValue, newValue in
                         meter.calibrationOffset = newValue
