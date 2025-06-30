@@ -120,7 +120,7 @@ struct EQSettingsView: View {
     @Binding var numberOfBands: Float
     @Binding var animationSpeed: Double // Example: 0.1 to 1.0
     @Binding var lineSmoothness: Int    // Example: 1 to 10
-    @Binding var calibrationOffset: Float // Added for calibration
+    // @Binding var calibrationOffset: Float // Removed for calibration UI
 
     var body: some View {
         VStack {
@@ -140,11 +140,11 @@ struct EQSettingsView: View {
                     Slider(value: .init(get: { Float(lineSmoothness) }, set: { lineSmoothness = Int($0) }), in: 1...10, step: 1)
                     Text("\(lineSmoothness)").frame(width: 30, alignment: .trailing)
                 }
-                HStack {
-                    Text("Calibrate:").frame(width: 80, alignment: .leading)
-                    Slider(value: $calibrationOffset, in: -20...20, step: 0.5) // Example range, adjust as needed
-                    Text(String(format: "%.1f", calibrationOffset)).frame(width: 40, alignment: .trailing) // Adjusted width
-                }
+                // HStack {
+                //     Text("Calibrate:").frame(width: 80, alignment: .leading)
+                //     Slider(value: $calibrationOffset, in: -20...20, step: 0.5) // Example range, adjust as needed
+                //     Text(String(format: "%.1f", calibrationOffset)).frame(width: 40, alignment: .trailing) // Adjusted width
+                // }
             }
             .padding(.vertical, 5) // Reduced vertical padding inside the group
         }
@@ -204,7 +204,7 @@ struct ContentView: View {
     @State private var numberOfBands: Float = 60 // Default value, matching current spectrum
     @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
     @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
-    @State private var calibrationOffsetValue: Float = -7.0 // Default, will sync with meter
+    // @State private var calibrationOffsetValue: Float = -7.0 // Removed
 
     // AppStorage for the gauge style configuration
     @AppStorage("gaugeStyleConfig") private var gaugeStyleConfigData: Data?
@@ -237,17 +237,17 @@ struct ContentView: View {
                     EQSettingsView(
                         numberOfBands: $numberOfBands,
                         animationSpeed: $animationSpeed,
-                        lineSmoothness: $lineSmoothness,
-                        calibrationOffset: $calibrationOffsetValue
+                        lineSmoothness: $lineSmoothness
+                        // calibrationOffset: $calibrationOffsetValue // Removed
                     )
-                    .onChange(of: calibrationOffsetValue) { oldValue, newValue in
-                        meter.calibrationOffset = newValue
-                    }
+                    // .onChange(of: calibrationOffsetValue) { oldValue, newValue in
+                    //     meter.calibrationOffset = newValue
+                    // } // Removed
                 }
                 .padding(.horizontal)
-                .onAppear { // Initialize slider value from meter's value
-                    calibrationOffsetValue = meter.calibrationOffset
-                }
+                // .onAppear { // Initialize slider value from meter's value
+                //     calibrationOffsetValue = meter.calibrationOffset
+                // } // Removed
 
 
                 actionButton
