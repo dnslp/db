@@ -184,14 +184,29 @@ struct CircularGaugeView: View {
 
 
                 // Progress arc
+                let normalizedLevel = CGFloat(min(level / 140, 1))
+
+                // Arc 1 (right side)
                 Circle()
-                    .trim(from: 0, to: CGFloat(min(level / 140, 1)))
+                    .trim(from: 0, to: normalizedLevel / 2)
                     .stroke(
                         AngularGradient(
-                            gradient: Gradient(colors: currentProgressArcColors), // Use new property
+                            gradient: Gradient(colors: currentProgressArcColors),
                             center: .center
                         ),
-                        style: currentStrokeStyle // Use new property
+                        style: currentStrokeStyle
+                    )
+                    .rotationEffect(.degrees(-90))
+
+                // Arc 2 (left side)
+                Circle()
+                    .trim(from: 1.0 - (normalizedLevel / 2), to: 1.0)
+                    .stroke(
+                        AngularGradient(
+                            gradient: Gradient(colors: currentProgressArcColors),
+                            center: .center
+                        ),
+                        style: currentStrokeStyle
                     )
                     .rotationEffect(.degrees(-90))
 
@@ -203,6 +218,9 @@ struct CircularGaugeView: View {
                         .font(.system(size: size * 0.05, weight: .medium, design: fontDesign ?? .rounded))
                         .foregroundColor(textColor)
                         .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .frame(height: size * 0.15, alignment: .top) // Fixed height for contextual text
                         .padding(.top, size * 0.02)
                 }
             }
