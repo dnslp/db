@@ -81,9 +81,8 @@ final class AudioMeter: ObservableObject {
         // Use the calibrationOffset property
         var db = max(20 * log10(rms) + 100 + self.calibrationOffset, 0)
         db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
-        level = level*0.75 + db*0.25
-        sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db); minDecibels = Swift.min(minDecibels, db)
-        // FFT 60 bins
+
+        // FFT 60 bins needs to be calculated before dispatching to main queue for UI updates
         var win = [Float](repeating: 0, count: 1024)
         vDSP_vmul(ch, 1, window, 1, &win, 1, 1024)
         var r = [Float](repeating: 0, count: 1024)
@@ -107,7 +106,16 @@ final class AudioMeter: ObservableObject {
                             let currentMax = mags[start..<min(end, mags.count)].max() ?? 0
                             spec.append(currentMax)
                         }
-                        DispatchQueue.main.async { self.spectrum = spec }
+
+                        // All UI updates must be on the main thread
+                        DispatchQueue.main.async {
+                            self.level = self.level*0.75 + db*0.25
+                            self.sampleCount += 1
+                            self.avg += (db - self.avg) / Float(self.sampleCount)
+                            self.peak = Swift.max(self.peak, db)
+                            self.minDecibels = Swift.min(self.minDecibels, db)
+                            self.spectrum = spec
+                        }
                     }
                 }
             }
