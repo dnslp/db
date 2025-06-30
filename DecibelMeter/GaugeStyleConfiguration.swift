@@ -122,6 +122,9 @@ struct CodableColor: Codable {
 }
 
 struct GaugeStyleConfiguration: Codable { // Added Codable
+    // Explicit initializer
+    init() {}
+
     // Store CodableColor instead of Color directly
     private var _gaugeBackgroundColor: CodableColor = CodableColor(color: Color.secondary.opacity(0.1))
     var selectedMaterial: SelectableMaterial = .none
