@@ -192,7 +192,9 @@ struct CircularGaugeView: View {
                     .stroke(
                         AngularGradient(
                             gradient: Gradient(colors: currentProgressArcColors),
-                            center: .center
+                            center: .center,
+                            startAngle: .degrees(270), // Start gradient at the top
+                            endAngle: .degrees(270 + 359.9) // Sweep almost full circle to avoid start/end color jump if colors don't perfectly tile
                         ),
                         style: currentStrokeStyle
                     )
@@ -204,7 +206,9 @@ struct CircularGaugeView: View {
                     .stroke(
                         AngularGradient(
                             gradient: Gradient(colors: currentProgressArcColors),
-                            center: .center
+                            center: .center,
+                            startAngle: .degrees(270), // Start gradient at the top
+                            endAngle: .degrees(270 + 359.9) // Sweep almost full circle
                         ),
                         style: currentStrokeStyle
                     )
