@@ -17,7 +17,7 @@ private let FREQ_LABELS: [Int] = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20
 
 // MARK: - Audio meter
 final class AudioMeter: ObservableObject {
-    @Published var calibrationOffset: Float = -7.0 // Default value, can be configured
+    @Published var calibrationOffset: Float = 0 // Default value, can be configured
     private let engine = AVAudioEngine()
     private let fftSetup = vDSP_DFT_zop_CreateSetup(nil, 1024, .FORWARD)!
     private let window: [Float] = {
