@@ -11,12 +11,13 @@ import Accelerate
 import AVFAudio
 
 // MARK: - Parameters
-private let CAL_OFFSET: Float = -7          // tweak after calibration
+// private let CAL_OFFSET: Float = -7          // tweak after calibration // Will be moved into AudioMeter
 private let SAFE_THRESHOLD: Float = 50      // baby‑safe cut‑off dB
 private let FREQ_LABELS: [Int] = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
 
 // MARK: - Audio meter
 final class AudioMeter: ObservableObject {
+    @Published var calibrationOffset: Float = -7.0 // Default value, can be configured
     private let engine = AVAudioEngine()
     private let fftSetup = vDSP_DFT_zop_CreateSetup(nil, 1024, .FORWARD)!
     private let window: [Float] = {
@@ -77,7 +78,8 @@ final class AudioMeter: ObservableObject {
         // SPL
         var power: Float = 0; vDSP_measqv(ch, 1, &power, vDSP_Length(n))
         let rms = sqrt(power + Float.ulpOfOne)
-        var db = max(20 * log10(rms)+100+CAL_OFFSET, 0)
+        // Use the calibrationOffset property
+        var db = max(20 * log10(rms) + 100 + self.calibrationOffset, 0)
         db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
         level = level*0.75 + db*0.25
         sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db); minDecibels = Swift.min(minDecibels, db)
@@ -118,6 +120,7 @@ struct EQSettingsView: View {
     @Binding var numberOfBands: Float
     @Binding var animationSpeed: Double // Example: 0.1 to 1.0
     @Binding var lineSmoothness: Int    // Example: 1 to 10
+    @Binding var calibrationOffset: Float // Added for calibration
 
     var body: some View {
         VStack {
@@ -136,6 +139,11 @@ struct EQSettingsView: View {
                     Text("Smoothness:").frame(width: 80, alignment: .leading)
                     Slider(value: .init(get: { Float(lineSmoothness) }, set: { lineSmoothness = Int($0) }), in: 1...10, step: 1)
                     Text("\(lineSmoothness)").frame(width: 30, alignment: .trailing)
+                }
+                HStack {
+                    Text("Calibrate:").frame(width: 80, alignment: .leading)
+                    Slider(value: $calibrationOffset, in: -20...20, step: 0.5) // Example range, adjust as needed
+                    Text(String(format: "%.1f", calibrationOffset)).frame(width: 40, alignment: .trailing) // Adjusted width
                 }
             }
             .padding(.vertical, 5) // Reduced vertical padding inside the group
@@ -196,6 +204,7 @@ struct ContentView: View {
     @State private var numberOfBands: Float = 60 // Default value, matching current spectrum
     @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
     @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
+    @State private var calibrationOffsetValue: Float = -7.0 // Default, will sync with meter
 
     // AppStorage for the gauge style configuration
     @AppStorage("gaugeStyleConfig") private var gaugeStyleConfigData: Data?
@@ -228,10 +237,18 @@ struct ContentView: View {
                     EQSettingsView(
                         numberOfBands: $numberOfBands,
                         animationSpeed: $animationSpeed,
-                        lineSmoothness: $lineSmoothness
+                        lineSmoothness: $lineSmoothness,
+                        calibrationOffset: $calibrationOffsetValue
                     )
+                    .onChange(of: calibrationOffsetValue) { oldValue, newValue in
+                        meter.calibrationOffset = newValue
+                    }
                 }
                 .padding(.horizontal)
+                .onAppear { // Initialize slider value from meter's value
+                    calibrationOffsetValue = meter.calibrationOffset
+                }
+
 
                 actionButton
                 resetButton

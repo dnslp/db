@@ -37,6 +37,19 @@ struct DecibelMeterTests {
         #expect(true, "Styling options are implemented; visual verification via Previews.")
     }
 
+    @Test func testAudioMeterCalibrationOffset() throws {
+        let audioMeter = AudioMeter()
+        let initialOffset = audioMeter.calibrationOffset
+        #expect(initialOffset == -7.0, "Default calibration offset should be -7.0")
+
+        let newOffset: Float = 5.5
+        audioMeter.calibrationOffset = newOffset
+        #expect(audioMeter.calibrationOffset == newOffset, "Calibration offset should be updatable to \(newOffset)")
+
+        audioMeter.calibrationOffset = 0.0
+        #expect(audioMeter.calibrationOffset == 0.0, "Calibration offset should be updatable to 0.0")
+    }
+
     @Test func testCircularGaugeViewShadowLogic() throws {
         let gaugeDefaultShadow = CircularGaugeView(level: 70)
         // By default, showShadow is false, customShadow is nil.
