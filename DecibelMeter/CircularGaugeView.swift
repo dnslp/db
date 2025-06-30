@@ -186,33 +186,34 @@ struct CircularGaugeView: View {
                 // Progress arc
                 let normalizedLevel = CGFloat(min(level / 140, 1))
 
-                // Arc 1 (right side)
+                // Single Progress Arc
                 Circle()
-                    .trim(from: 0, to: normalizedLevel / 2)
+                    // The trim needs to correspond to the visual representation.
+                    // If 0 degrees is at the right, and we rotate by 180 degrees, 0 is now at the left.
+                    // We want the gauge to start at visual bottom-left.
+                    // This corresponds to -135 degrees or 225 degrees in a standard Cartesian coordinate system (0 right, 90 up).
+                    // SwiftUI's Circle path starts at the right (0 degrees) and goes clockwise.
+                    // A rotation of .degrees(135) would make the circle's 0-degree point align with bottom-left.
+                    // Then trim from 0 to normalizedLevel * (270/360) if we want a 270 degree sweep.
+                    .trim(from: 0, to: normalizedLevel * 0.75) // Assuming gauge spans 3/4 of a circle (270 degrees)
                     .stroke(
                         AngularGradient(
                             gradient: Gradient(colors: currentProgressArcColors),
                             center: .center,
-                            startAngle: .degrees(270),      // Visual top after rotation
-                            endAngle: .degrees(270 + 180)   // Visual bottom after rotation (180 deg sweep)
+                            // Gradient should start where the arc starts.
+                            // If arc starts at -135 deg (bottom-left) and sweeps 270 deg, it ends at 135 deg (top-right).
+                            startAngle: .degrees(0), // Start of the gradient relative to the shape's own coord system
+                            endAngle: .degrees(360 * 0.75)   // End of gradient sweep, matching the arc's max sweep
                         ),
                         style: currentStrokeStyle
                     )
-                    .rotationEffect(.degrees(-90))
-
-                // Arc 2 (left side)
-                Circle()
-                    .trim(from: 1.0 - (normalizedLevel / 2), to: 1.0)
-                    .stroke(
-                        AngularGradient(
-                            gradient: Gradient(colors: currentProgressArcColors),
-                            center: .center,
-                            startAngle: .degrees(270),      // Visual top after rotation
-                            endAngle: .degrees(270 + 180)   // Visual bottom after rotation (180 deg sweep)
-                        ),
-                        style: currentStrokeStyle
-                    )
-                    .rotationEffect(.degrees(-90))
+                    // Rotate the entire circle so that its 0-degree mark (start of the trim)
+                    // is positioned at the visual bottom-left of the gauge.
+                    // Bottom-left is at an angle of 225 degrees (or -135 degrees).
+                    // SwiftUI circle's 0 is right. To move this to bottom-left (225 deg), rotate by 225 deg.
+                    // Or, to make it more like Apple's, which often starts at ~7 o'clock and goes to ~5 o'clock.
+                    // Let's try starting at -135 degrees (225) for the path.
+                    .rotationEffect(.degrees(135)) // Rotates the circle so 0 point of trim is at bottom-left
 
                 VStack {
                     Text("\(Int(level)) dB")
