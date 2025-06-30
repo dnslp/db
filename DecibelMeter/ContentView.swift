@@ -38,22 +38,49 @@ final class AudioMeter: ObservableObject {
 
     // MARK: public API
     func start(numberOfBands: Int = 60) { // Accept numberOfBands
-        guard !running else { return }
+        print("[AudioMeter] Attempting to start. Current running state: \(running)")
+        guard !running else {
+            print("[AudioMeter] Already running. Ignoring start call.")
+            return
+        }
+
+        print("[AudioMeter] Starting with \(numberOfBands) bands.")
         self.numberOfBands = numberOfBands
-        self.spectrum = Array(repeating: 0, count: numberOfBands) // Initialize spectrum with correct size
+        // Initialize spectrum array with zeros. This ensures UI has a valid array structure immediately.
+        self.spectrum = Array(repeating: 0.00001, count: numberOfBands) // Use a tiny non-zero value to avoid division by zero in visualizer if max is 0
+
         do {
             try prepareSession()
             let node = engine.inputNode
             let fmt  = node.outputFormat(forBus: 0)
-            node.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, _ in
+
+            print("[AudioMeter] Installing tap with buffer size 1024.")
+            node.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, timestamp in
+                // print("[AudioMeter] Audio buffer received at \(timestamp.audioTimeStamp.mSampleTime)")
                 self?.process(buf)
             }
-            try engine.start(); running = true
-        } catch { print("Audio start error", error) }
+
+            try engine.start()
+            running = true
+            print("[AudioMeter] Engine started successfully. Running state: \(running)")
+        } catch {
+            print("[AudioMeter] Audio start error: \(error.localizedDescription)")
+            running = false // Ensure running state is false if start fails
+        }
     }
+
     func stop() {
-        guard running else { return }
-        engine.stop(); engine.inputNode.removeTap(onBus: 0); running = false
+        print("[AudioMeter] Attempting to stop. Current running state: \(running)")
+        guard running else {
+            print("[AudioMeter] Not running. Ignoring stop call.")
+            return
+        }
+
+        engine.inputNode.removeTap(onBus: 0)
+        print("[AudioMeter] Tap removed.")
+        engine.stop()
+        running = false
+        print("[AudioMeter] Engine stopped. Running state: \(running)")
     }
 
     // Called on scene/background
@@ -104,10 +131,32 @@ final class AudioMeter: ObservableObject {
                             let start = i * step
                             let end = (i + 1) * step
                             // Ensure we don't go out of bounds for mags
-                            let currentMax = mags[start..<min(end, mags.count)].max() ?? 0
+                            var currentMax = mags[start..<min(end, mags.count)].max() ?? 0
+
+                            // Apply logarithmic scaling to compress dynamic range
+                            // Add 1 before log to prevent log(0) or log(<1) issues, then scale.
+                            // Adjust the scaling factor (e.g., 20.0) to control the visual compression.
+                            // A higher factor means more compression of high values.
+                            currentMax = log10(currentMax + 1.0) * 20.0 // Example scaling
+
+                            // Ensure value is non-negative after log scaling
+                            currentMax = max(0, currentMax)
+
                             spec.append(currentMax)
                         }
-                        DispatchQueue.main.async { self.spectrum = spec }
+
+                        // Further normalize the entire frame so the peak is somewhat consistent if desired,
+                        // or apply a global scaling factor. For now, the log scaling per bin is the primary change.
+                        // Example: Normalize to a peak of 1.0 if spec is not all zeros.
+                        // let specMax = spec.max() ?? 1.0
+                        // if specMax > 0 {
+                        //    spec = spec.map { $0 / specMax }
+                        // }
+
+                        DispatchQueue.main.async {
+                            // print("[AudioMeter] Processed spectrum: \(spec.map { String(format: "%.2f", $0) })")
+                            self.spectrum = spec
+                        }
                     }
                 }
             }
@@ -218,16 +267,28 @@ struct ContentView: View {
                 .frame(height: 150) // Increased height for better visualization
                 .padding(.horizontal)
                 .onChange(of: numberOfBands) { oldValue, newValue in
-                        // Restart meter with new number of bands if it's running
-                        if running {
-                            meter.stop()
+                    print("[ContentView] numberOfBands changed from \(oldValue) to \(newValue). Current meter running state: \(meter.running)")
+                    // Ensure meter is stopped before reconfiguring.
+                    // Dispatch to main queue to ensure UI updates and audio operations are coordinated.
+                    DispatchQueue.main.async {
+                        if meter.running {
+                            print("[ContentView] Meter is running. Stopping meter before changing bands.")
+                            meter.stop() // Stop the meter
+                            // It's crucial that start is only called after stop has completed.
+                            // For simplicity here, we rely on the synchronous nature of stop() within this async block.
+                            // If stop() were asynchronous itself, further coordination (e.g. completion handler) would be needed.
+                            print("[ContentView] Meter stopped. Starting meter with new band count: \(Int(newValue)).")
                             meter.start(numberOfBands: Int(newValue))
                         } else {
-                            // Update the meter's band count even if not running, so it starts with the new value
+                            // If the meter is not running, just update its configuration.
+                            // It will use this new band count when it's next started.
+                            print("[ContentView] Meter is not running. Updating numberOfBands to \(Int(newValue)) and re-initializing spectrum.")
                             meter.numberOfBands = Int(newValue)
-                            meter.spectrum = Array(repeating: 0, count: Int(newValue))
+                            // Also update the spectrum array to reflect the new band count for placeholder UI
+                            meter.spectrum = Array(repeating: 0.00001, count: Int(newValue))
                         }
                     }
+                }
 
                 DisclosureGroup("EQ Settings", isExpanded: $showEQSettings) {
                     // Pass the new EQ settings bindings to EQSettingsView
@@ -241,11 +302,18 @@ struct ContentView: View {
                         eqBackgroundColor: $eqBackgroundColor
                     )
                     .onChange(of: calibrationOffsetValue) { oldValue, newValue in
+                        print("[ContentView] calibrationOffsetValue changed from \(oldValue) to \(newValue).")
+                        // This change can be applied directly to the meter whether it's running or not.
+                        // It doesn't require restarting the audio engine.
                         meter.calibrationOffset = newValue
                     }
                 }
                 .padding(.horizontal)
                 .onAppear { // Initialize slider value from meter's value
+                    // Sync the local state with the meter's initial state only if it hasn't been set yet
+                    // or if they differ, to avoid potential issues if this onAppear runs multiple times.
+                    // However, direct assignment is usually fine for onAppear.
+                    print("[ContentView] onAppear: Initializing calibrationOffsetValue from meter.calibrationOffset (\(meter.calibrationOffset)).")
                     calibrationOffsetValue = meter.calibrationOffset
                 }
 
