@@ -1,4 +1,8 @@
 //
+//  DEPRECATION CANDIDATE: This class provides similar functionality to `AudioMeter`
+//  found in `ContentView.swift`. The main application UI currently uses `AudioMeter`.
+//  This `SoundMeter` class may be considered for deprecation or removal in future refactoring.
+//
 //  Untitled.swift
 //  DecibelMeter
 //
