@@ -204,7 +204,7 @@ struct ContentView: View {
     @State private var numberOfBands: Float = 60 // Default value, matching current spectrum
     @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
     @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
-    @AppStorage("calibrationOffset") private var calibrationOffsetValue: Float = -7.0 // Default, will sync with meter, now persisted
+    @AppStorage("calibrationOffset") private var calibrationOffsetValueDouble: Double = -7.0 // Persisted as Double
 
     // AppStorage for the gauge style configuration
     @AppStorage("gaugeStyleConfig") private var gaugeStyleConfigData: Data?
@@ -238,11 +238,12 @@ struct ContentView: View {
                         numberOfBands: $numberOfBands,
                         animationSpeed: $animationSpeed,
                         lineSmoothness: $lineSmoothness,
-                        calibrationOffset: $calibrationOffsetValue
+                        calibrationOffset: Binding(
+                            get: { Float(self.calibrationOffsetValueDouble) },
+                            set: { self.calibrationOffsetValueDouble = Double($0) }
+                        )
                     )
-                    .onChange(of: calibrationOffsetValue) { oldValue, newValue in
-                        meter.calibrationOffset = newValue
-                    }
+                    // onChange for meter.calibrationOffset will be handled by calibrationOffsetValueDouble
                 }
                 .padding(.horizontal)
 
@@ -266,8 +267,11 @@ struct ContentView: View {
         }
         .onAppear {
             // Initialize meter's calibration offset from persisted value
-            meter.calibrationOffset = calibrationOffsetValue
+            meter.calibrationOffset = Float(calibrationOffsetValueDouble)
             loadGaugeConfig()
+        }
+        .onChange(of: calibrationOffsetValueDouble) { oldValue, newValue in
+            meter.calibrationOffset = Float(newValue)
         }
         .onChange(of: phase) { oldPhase, newPhase in
             if newPhase == .background { meter.suspend(); saveGaugeConfig() } // Save on backgrounding
