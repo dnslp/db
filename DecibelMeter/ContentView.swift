@@ -17,7 +17,7 @@ private let FREQ_LABELS: [Int] = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20
 
 // MARK: - Audio meter
 final class AudioMeter: ObservableObject {
-    @Published var calibrationOffset: Float = 0 // Default value, can be configured
+    @Published var calibrationOffset: Float = 7.0 // Default value set to +7.0 based on user feedback
     private let engine = AVAudioEngine()
     private let fftSetup = vDSP_DFT_zop_CreateSetup(nil, 1024, .FORWARD)!
     private let window: [Float] = {
@@ -356,7 +356,7 @@ struct ContentView: View {
     @State private var numberOfBands: Float = 60 // Default value, matching current spectrum
     @State private var animationSpeed: Double = 0.2 // Adjusted default animation speed
     @State private var lineSmoothness: Int = 3    // Adjusted default line smoothness
-    @State private var calibrationOffsetValue: Float = -7.0 // Default, will sync with meter
+    @State private var calibrationOffsetValue: Float = 7.0 // Default set to +7.0 based on user feedback
 
     // AppStorage for the gauge style configuration
     @AppStorage("gaugeStyleConfig") private var gaugeStyleConfigData: Data?
