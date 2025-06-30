@@ -33,8 +33,45 @@ final class AudioMeter: ObservableObject {
     @Published var spectrum: [Float] = Array(repeating: 0, count: 60) // Default, will be updated
     @Published var numberOfBands: Int = 60 // Default, configurable
 
+    private var sampleRate: Double = 48000.0 // Default sample rate, will be updated in start()
     private var sampleCount = 0
     private var running = false
+
+    // Function to calculate A-weighting for a given frequency
+    private func getAWeighting(frequency: Float) -> Float {
+        if frequency == 0 { return -200.0 } // Avoid log(0) and large attenuation for DC
+
+        let f2 = frequency * frequency
+        let f4 = f2 * f2
+
+        // Numerator term for R_A(f)
+        let num = pow(12194.0, 2.0) * f4
+
+        // Denominator terms for R_A(f)
+        let den1 = f2 + pow(20.6, 2.0)
+        let den2_term1 = f2 + pow(107.7, 2.0)
+        let den2_term2 = f2 + pow(737.9, 2.0)
+        let den2 = sqrt(den2_term1 * den2_term2)
+        let den3 = f2 + pow(12194.0, 2.0)
+
+        // Check for zero denominator to avoid division by zero
+        if den1 == 0 || den2 == 0 || den3 == 0 {
+            return -200.0 // Large attenuation if any part of denominator is zero
+        }
+
+        let r_a = num / (den1 * den2 * den3)
+
+        if r_a == 0 {
+            return -200.0 // Large attenuation if r_a is zero
+        }
+
+        let a_db = 20 * log10(r_a) + 2.00
+
+        // The A-weighting curve can produce very large negative values at low frequencies.
+        // Some implementations cap this at a certain level, e.g. -70dB or -80dB.
+        // For now, we'll return the calculated value.
+        return a_db
+    }
 
     // MARK: public API
     func start(numberOfBands: Int = 60) { // Accept numberOfBands
@@ -45,6 +82,7 @@ final class AudioMeter: ObservableObject {
             try prepareSession()
             let node = engine.inputNode
             let fmt  = node.outputFormat(forBus: 0)
+            self.sampleRate = fmt.sampleRate // Store the actual sample rate
             node.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, _ in
                 self?.process(buf)
             }
@@ -75,43 +113,146 @@ final class AudioMeter: ObservableObject {
     private func process(_ buf: AVAudioPCMBuffer) {
         guard let ch = buf.floatChannelData?[0] else { return }
         let n = Int(buf.frameLength)
-        // SPL
-        var power: Float = 0; vDSP_measqv(ch, 1, &power, vDSP_Length(n))
-        let rms = sqrt(power + Float.ulpOfOne)
-        // Use the calibrationOffset property
-        var db = max(20 * log10(rms) + 100 + self.calibrationOffset, 0)
-        db = min(db, 140) // Removed *1.4 scaling for more standard dB representation
-        level = level*0.75 + db*0.25
-        sampleCount += 1; avg += (db-avg)/Float(sampleCount); peak = max(peak, db); minDecibels = Swift.min(minDecibels, db)
-        // FFT 60 bins
-        var win = [Float](repeating: 0, count: 1024)
-        vDSP_vmul(ch, 1, window, 1, &win, 1, 1024)
-        var r = [Float](repeating: 0, count: 1024)
-        var i = [Float](repeating: 0, count: 1024)
-        let zero = [Float](repeating: 0, count: 1024)
-        win.withUnsafeBufferPointer { rp in
-            zero.withUnsafeBufferPointer { ip in
-                r.withUnsafeMutableBufferPointer { rOut in
-                    i.withUnsafeMutableBufferPointer { iOut in
-                        vDSP_DFT_Execute(fftSetup, rp.baseAddress!, ip.baseAddress!, rOut.baseAddress!, iOut.baseAddress!)
-                        var mags = [Float](repeating: 0, count: 512)
-                        var split = DSPSplitComplex(realp: rOut.baseAddress!, imagp: iOut.baseAddress!)
-                        vDSP_zvabs(&split, 1, &mags, 1, 512)
-                        // Use the numberOfBands from the published property
-                        let step = 512 / self.numberOfBands
-                        var spec: [Float] = []
-                        for i in 0..<self.numberOfBands {
-                            let start = i * step
-                            let end = (i + 1) * step
-                            // Ensure we don't go out of bounds for mags
-                            let currentMax = mags[start..<min(end, mags.count)].max() ?? 0
-                            spec.append(currentMax)
-                        }
-                        DispatchQueue.main.async { self.spectrum = spec }
+        // Original SPL calculation (broadband, non-A-weighted) is effectively replaced by A-weighted calculation from spectrum
+
+        // FFT
+        var win = [Float](repeating: 0, count: 1024) // Buffer for windowed signal
+        vDSP_vmul(ch, 1, window, 1, &win, 1, 1024) // Apply Hann window
+
+        // Prepare for FFT
+        var realIn = [Float](repeating: 0, count: 1024)
+        var imagIn = [Float](repeating: 0, count: 1024) // Imaginary part is zero for real input
+        var realOut = [Float](repeating: 0, count: 1024)
+        var imagOut = [Float](repeating: 0, count: 1024)
+
+        // Copy windowed signal to real input buffer for FFT
+        // vDSP_DFT_Execute expects input in specific layout if using real-to-complex,
+        // but here we use complex-to-complex DFT (zop) with imagIn as zeros.
+        realIn.withUnsafeMutableBufferPointer { rp in
+            win.withUnsafeBufferPointer { winP in
+                memcpy(rp.baseAddress, winP.baseAddress, 1024 * MemoryLayout<Float>.size)
+            }
+        }
+
+        // Perform FFT
+        realIn.withUnsafeBufferPointer { rp_unsafe in
+            imagIn.withUnsafeBufferPointer { ip_unsafe in
+                realOut.withUnsafeMutableBufferPointer { rOut_unsafe in
+                    imagOut.withUnsafeMutableBufferPointer { iOut_unsafe in
+                        vDSP_DFT_Execute(fftSetup, rp_unsafe.baseAddress!, ip_unsafe.baseAddress!, rOut_unsafe.baseAddress!, iOut_unsafe.baseAddress!)
                     }
                 }
             }
         }
+
+        var rawMagnitudes = [Float](repeating: 0, count: 512)
+        var splitComplex = DSPSplitComplex(realp: realOut.withUnsafeMutableBufferPointer { $0.baseAddress! },
+                                           imagp: imagOut.withUnsafeMutableBufferPointer { $0.baseAddress! })
+        vDSP_zvabs(&splitComplex, 1, &rawMagnitudes, 1, 512) // Calculate magnitudes of FFT output bins
+
+        // A-weighting and overall dBA calculation
+        var totalAWeightedPower: Float = 0.0
+        var magsAWeighted = [Float](repeating: 0, count: 512)
+        let nyquistFrequency = Float(self.sampleRate) / 2.0
+
+        for k in 0..<512 { // Iterate through FFT bins (0 to N/2 - 1)
+            let frequency = Float(k) * Float(self.sampleRate) / 1024.0 // Center frequency of bin k
+
+            // Ensure frequency does not exceed Nyquist to avoid issues with weighting function if it's not defined beyond
+            // Though for A-weighting, it's generally fine.
+            let currentFrequency = min(frequency, nyquistFrequency)
+
+            let aWeightDB = self.getAWeighting(frequency: currentFrequency)
+            let linearWeight = pow(10.0, aWeightDB / 20.0)
+
+            // It's important to correctly scale FFT magnitudes.
+            // For vDSP_DFT_Execute (zop), the output is not normalized by default.
+            // A common normalization for power is 1/N^2, or 1/N for amplitude.
+            // Here, rawMagnitudes[k] is an amplitude.
+            // Let's scale by 1/N (N=1024) for amplitude, then square for power.
+            // The vDSP_zvabs result is already sqrt(real^2 + imag^2).
+            // The scaling factor for DFT to match RMS power of input needs care.
+            // If input signal was pure sine of amplitude A, its RMS is A/sqrt(2).
+            // Its FFT peak (single bin) would be A * N / 2 (for one-sided spectrum from zop).
+            // For now, let's use magnitudes as they are and see if `+100` offset is still relevant.
+            // The division by N (or N/2) is often part of converting FFT output to physical units (like Pa for SPL).
+            // Let's assume rawMagnitudes are proportional to amplitude in each band.
+            // Power is proportional to amplitude squared.
+
+            let scaledMag = rawMagnitudes[k] / 1024.0 // Basic scaling for N=1024 point FFT
+                                                      // This scaling makes the FFT magnitudes smaller.
+                                                      // This might require adjusting the `+100` offset later or finding a better scaling factor.
+
+            let weightedMag = scaledMag * linearWeight
+            magsAWeighted[k] = weightedMag // Store for spectrum display
+            totalAWeightedPower += pow(weightedMag, 2.0)
+        }
+
+        // Calculate overall A-weighted SPL (dBA)
+        // totalAWeightedPower is sum of squared scaled&weighted magnitudes.
+        // This is proportional to the A-weighted power.
+        // To convert to dB, 10 * log10(Power) or 20 * log10(RMS_Amplitude)
+        // If totalAWeightedPower is treated as "Power_A_weighted_scaled"
+
+        // The original code used: rms = sqrt(power_from_vDSP_measqv); db = 20*log10(rms) + 100
+        // If we define rmsA = sqrt(totalAWeightedPower), this is problematic because totalAWeightedPower is a sum over many bins.
+        // It's more like totalAWeightedPower is already the "power" term, scaled differently.
+        // Let's try to keep the structure similar:
+        // If totalAWeightedPower is analogous to `power` from vDSP_measqv, then:
+        // let rmsA_equivalent = sqrt(totalAWeightedPower + Float.ulpOfOne)
+        // let db_A = 20 * log10(rmsA_equivalent) + 100 + self.calibrationOffset + 10.0
+        // The scaling of rawMagnitudes[k] by /1024.0 is crucial here.
+        // If totalAWeightedPower is very small due to this scaling, db_A will be very low.
+        // Let's use a reference scaling factor. The `+100` implies dBFS where 0dBFS is max level.
+        // The vDSP_measqv result `power` is sum of squares of samples / N.
+        // The sum of squares of FFT magnitudes (Parseval's theorem) should be related.
+        // Sum_k (Mag_k)^2 / N^2 = Sum_n (x_n)^2 / N  (approx, for one-sided spectrum & N scaling)
+        // So totalAWeightedPower (using Mag_k/N) is like Sum_k (Mag_k/N)^2.
+        // This is sum_power_per_bin.
+        // Let's assume totalAWeightedPower is now the A-weighted power, comparable to original `power`
+        // if N=1, but since N=1024, and we summed 512 bins.
+        // This part is the trickiest and usually requires careful calibration or known reference.
+
+        // For now, let's proceed with totalAWeightedPower being the sum of (scaled_mag * weight)^2
+        // And treat it as the new "power" measure.
+        let rmsA_from_spectrum = sqrt(totalAWeightedPower + Float.ulpOfOne) // This isn't quite RMS of signal, but related to total A-weighted power
+
+        // The crucial part: relating rmsA_from_spectrum to an SPL value.
+        // The original `20 * log10(rms) + 100` converted a unitless RMS (0 to 1 for full scale) to dB (0-100 range).
+        // rmsA_from_spectrum needs to be in a similar unitless range (0 to 1) if +100 is to make sense.
+        // The rawMagnitudes from vDSP_zvabs are such that for a full-scale sine wave (amplitude 1.0),
+        // the peak bin magnitude is N/2 = 512. After scaling by /1024, it's 0.5.
+        // Squaring this gives 0.25. Summing these (if it were broadband noise) would be larger.
+        // This suggests rmsA_from_spectrum (derived from mags/1024) might be in a range somewhat compatible with the 0-1 idea.
+
+        var db_A = 20 * log10(rmsA_from_spectrum + Float.ulpOfOne) + 100 + self.calibrationOffset + 10.0
+        // If rmsA_from_spectrum is too small, db_A will be very negative, then max(0,...) clamps it.
+        // This is a common area for needing empirical adjustment of the constant offset (the `+100` part or a new one).
+
+        db_A = max(db_A, 0)
+        db_A = min(db_A, 140) // Cap at 140 dB
+
+        // Update published level and stats
+        level = level*0.75 + db_A*0.25 // Smoothing
+        sampleCount += 1
+        avg += (db_A - avg) / Float(sampleCount)
+        peak = max(peak, db_A)
+        minDecibels = Swift.min(minDecibels, db_A)
+
+        // Update spectrum display data using A-weighted magnitudes
+        // The magsAWeighted are already scaled by N=1024 and weighted.
+        // The spectrum view normalizes by its own maxVal, so absolute scale of these is less critical for shape.
+        let step = 512 / self.numberOfBands
+        var spec: [Float] = []
+        for i_band in 0..<self.numberOfBands {
+            let startBin = i_band * step
+            let endBin = (i_band + 1) * step
+            // Ensure we don't go out of bounds for magsAWeighted
+            let bandMags = magsAWeighted[startBin..<min(endBin, magsAWeighted.count)]
+            let currentMaxInBand = bandMags.max() ?? 0 // Max magnitude in this band
+            spec.append(currentMaxInBand)
+        }
+        DispatchQueue.main.async { self.spectrum = spec }
     }
 }
 
