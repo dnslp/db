@@ -1,5 +1,101 @@
 import SwiftUI
 
+// MARK: - Data Structures for Contextual Text
+
+enum SoundCategory: String, CaseIterable, Identifiable {
+    case home = "Home"
+    case work = "Work"
+    case recreation = "Recreation"
+
+    var id: String { self.rawValue }
+}
+
+struct SoundLevelData {
+    let levelRange: ClosedRange<Int>
+    let description: String
+    let category: SoundCategory
+}
+
+let soundLevelReferenceData: [SoundLevelData] = [
+    // Home
+    SoundLevelData(levelRange: 50...50, description: "Refrigerator", category: .home),
+    SoundLevelData(levelRange: 50...60, description: "Electric Toothbrush", category: .home),
+    SoundLevelData(levelRange: 50...75, description: "Washing Machine", category: .home),
+    SoundLevelData(levelRange: 50...75, description: "Air Conditioner", category: .home),
+    SoundLevelData(levelRange: 50...80, description: "Electric Shaver", category: .home),
+    SoundLevelData(levelRange: 55...55, description: "Coffee Percolator", category: .home),
+    SoundLevelData(levelRange: 55...70, description: "Dishwasher", category: .home),
+    SoundLevelData(levelRange: 60...60, description: "Sewing Machine", category: .home),
+    SoundLevelData(levelRange: 60...85, description: "Vacuum Cleaner", category: .home),
+    SoundLevelData(levelRange: 60...95, description: "Hair Dryer", category: .home),
+    SoundLevelData(levelRange: 65...80, description: "Alarm Clock", category: .home),
+    SoundLevelData(levelRange: 70...70, description: "TV Audio", category: .home),
+    SoundLevelData(levelRange: 70...80, description: "Coffee Grinder", category: .home),
+    SoundLevelData(levelRange: 70...95, description: "Garbage Disposal", category: .home),
+    SoundLevelData(levelRange: 75...85, description: "Flush Toilet", category: .home),
+    SoundLevelData(levelRange: 80...80, description: "Pop-Up Toaster", category: .home),
+    SoundLevelData(levelRange: 80...80, description: "Doorbell", category: .home),
+    SoundLevelData(levelRange: 80...80, description: "Ringing Telephone", category: .home),
+    SoundLevelData(levelRange: 80...80, description: "Whistling Kettle", category: .home),
+    SoundLevelData(levelRange: 80...90, description: "Food Mixer or Processor", category: .home),
+    SoundLevelData(levelRange: 80...90, description: "Blender", category: .home),
+    SoundLevelData(levelRange: 110...110, description: "Baby Crying", category: .home),
+    SoundLevelData(levelRange: 110...110, description: "Squeaky Toy Held Close to Ear", category: .home),
+    SoundLevelData(levelRange: 135...135, description: "Noisy Squeeze Toys", category: .home),
+
+    // Work
+    SoundLevelData(levelRange: 40...40, description: "Quiet Office, Library", category: .work),
+    SoundLevelData(levelRange: 50...50, description: "Large Office", category: .work),
+    SoundLevelData(levelRange: 65...95, description: "Power Lawn Mower", category: .work),
+    SoundLevelData(levelRange: 80...80, description: "Manual Machine, Tools", category: .work),
+    SoundLevelData(levelRange: 85...85, description: "Handsaw", category: .work),
+    SoundLevelData(levelRange: 90...90, description: "Tractor", category: .work),
+    SoundLevelData(levelRange: 90...115, description: "Subway", category: .work),
+    SoundLevelData(levelRange: 95...95, description: "Electric drill", category: .work),
+    SoundLevelData(levelRange: 100...100, description: "Factory Machinery", category: .work),
+    SoundLevelData(levelRange: 100...100, description: "Woodworking Class", category: .work),
+    SoundLevelData(levelRange: 105...105, description: "Snow Blower", category: .work),
+    SoundLevelData(levelRange: 110...110, description: "Power Saw", category: .work),
+    SoundLevelData(levelRange: 110...110, description: "Leaf Blower", category: .work),
+    SoundLevelData(levelRange: 120...125, description: "Chainsaw, Hammer On Nail", category: .work),
+    SoundLevelData(levelRange: 120...120, description: "Pneumatic Drills, Heavy Machine", category: .work),
+    SoundLevelData(levelRange: 120...120, description: "Jet Plane at Ramp", category: .work),
+    SoundLevelData(levelRange: 120...120, description: "Ambulance Siren", category: .work),
+    SoundLevelData(levelRange: 130...130, description: "Jackhammer, Power Drill", category: .work),
+    SoundLevelData(levelRange: 130...130, description: "Air Raid", category: .work),
+    SoundLevelData(levelRange: 130...130, description: "Percussion Section at Symphony", category: .work), // Also recreation, but often a work environment for musicians
+    SoundLevelData(levelRange: 140...140, description: "Airplane Taking Off", category: .work),
+    SoundLevelData(levelRange: 150...150, description: "Jet Engine Taking Off", category: .work),
+    SoundLevelData(levelRange: 150...150, description: "Artillery Fire at 500 Feet", category: .work),
+    SoundLevelData(levelRange: 189...189, description: "Rocket Launching from Pad", category: .work),
+
+    // Recreation
+    SoundLevelData(levelRange: 40...40, description: "Quiet Residential Area", category: .recreation),
+    SoundLevelData(levelRange: 70...70, description: "Freeway Traffic", category: .recreation),
+    SoundLevelData(levelRange: 85...85, description: "Heavy Traffic, Noisy Restaurant", category: .recreation),
+    SoundLevelData(levelRange: 90...90, description: "Truck, Shouted Conversation", category: .recreation),
+    SoundLevelData(levelRange: 95...110, description: "Motorcycle", category: .recreation),
+    SoundLevelData(levelRange: 100...100, description: "Snowmobile", category: .recreation),
+    SoundLevelData(levelRange: 100...100, description: "School Dance, Boom Box", category: .recreation),
+    SoundLevelData(levelRange: 110...110, description: "Music Club, Disco", category: .recreation),
+    SoundLevelData(levelRange: 110...110, description: "Busy Video Arcade", category: .recreation),
+    SoundLevelData(levelRange: 110...110, description: "Symphony Concert", category: .recreation),
+    SoundLevelData(levelRange: 110...110, description: "Car Horn", category: .recreation),
+    SoundLevelData(levelRange: 110...120, description: "Rock Concert", category: .recreation),
+    SoundLevelData(levelRange: 112...112, description: "Personal Music Player on High", category: .recreation),
+    SoundLevelData(levelRange: 117...117, description: "Football Game Stadium", category: .recreation),
+    SoundLevelData(levelRange: 120...120, description: "Band Concert", category: .recreation),
+    SoundLevelData(levelRange: 125...125, description: "Auto Stereo", category: .recreation),
+    SoundLevelData(levelRange: 130...130, description: "Stock Car Races", category: .recreation),
+    SoundLevelData(levelRange: 143...143, description: "Bicycle Horn", category: .recreation),
+    SoundLevelData(levelRange: 150...150, description: "Firecracker", category: .recreation),
+    SoundLevelData(levelRange: 156...156, description: "Cap Gun", category: .recreation),
+    SoundLevelData(levelRange: 157...157, description: "Balloon Pop", category: .recreation),
+    SoundLevelData(levelRange: 162...162, description: "Fireworks (at 3 Feet)", category: .recreation),
+    SoundLevelData(levelRange: 163...163, description: "Rifle", category: .recreation),
+    SoundLevelData(levelRange: 166...170, description: "Handgun, Shotgun", category: .recreation)
+]
+
 /// A custom shadow style configuration.
 struct ShadowStyle {
     var color: Color = .black.opacity(0.2)
@@ -22,6 +118,7 @@ struct CircularGaugeView: View {
     var customShadow: ShadowStyle? = nil
     var textColor: Color? = nil
     var fontDesign: Font.Design? = .rounded
+    var selectedCategory: SoundCategory = .home // Default category
 
     // Defined color key points for default dynamic gradient
     private let defaultColorKeyPoints: [(level: Float, h: Double, s: Double, b: Double)] = [
@@ -80,70 +177,35 @@ struct CircularGaugeView: View {
         return Color(hue: last.h, saturation: last.s, brightness: last.b)
     }
 
-    private func getContextualText(for level: Float) -> String {
-        let level = Int(level) // Work with integer decibel levels
-        switch level {
-        // Home
-        case 0..<40: return "Quiet Environment" // Added a default for very low levels
-        case 40..<50: return "Quiet Office, Library / Quiet Residential Area"
-        case 50: return "Refrigerator / Large Office"
-        case 51..<55: return "Electric Toothbrush"
-        case 55: return "Coffee Percolator / Electric Toothbrush"
-        case 56..<60: return "Dishwasher / Electric Toothbrush"
-        case 60: return "Sewing Machine / Electric Toothbrush / Vacuum Cleaner / Hair Dryer"
-        case 61..<65: return "Vacuum Cleaner / Hair Dryer"
-        case 65: return "Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower"
-        case 66..<70: return "Alarm Clock / Dishwasher / Vacuum Cleaner / Hair Dryer / Power Lawn Mower"
-        case 70: return "TV Audio / Coffee Grinder / Garbage Disposal / Alarm Clock / Dishwasher / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
-        case 71..<75: return "Washing Machine / Air Conditioner / Coffee Grinder / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
-        case 75: return "Washing Machine / Air Conditioner / Flush Toilet / Coffee Grinder / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
-        case 76..<80: return "Electric Shaver / Flush Toilet / Coffee Grinder / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Power Lawn Mower / Freeway Traffic"
-        case 80: return "Pop-Up Toaster / Doorbell / Ringing Telephone / Whistling Kettle / Food Mixer or Processor / Blender / Electric Shaver / Flush Toilet / Garbage Disposal / Alarm Clock / Vacuum Cleaner / Hair Dryer / Manual Machine, Tools / Power Lawn Mower / Freeway Traffic"
-        case 81..<85: return "Food Mixer or Processor / Blender / Electric Shaver / Flush Toilet / Vacuum Cleaner / Hair Dryer / Manual Machine, Tools / Power Lawn Mower / Heavy Traffic, Noisy Restaurant"
-        case 85: return "Handsaw / Food Mixer or Processor / Blender / Vacuum Cleaner / Hair Dryer / Heavy Traffic, Noisy Restaurant / Power Lawn Mower"
-        // Work & Recreation
-        case 86..<90: return "Food Mixer or Processor / Blender / Hair Dryer / Tractor / Truck, Shouted Conversation / Power Lawn Mower"
-        case 90: return "Tractor / Subway / Truck, Shouted Conversation / Hair Dryer / Power Lawn Mower"
-        case 91..<95: return "Subway / Electric drill / Hair Dryer / Power Lawn Mower / Motorcycle"
-        case 95: return "Electric drill / Power Lawn Mower / Motorcycle"
-        case 96..<100: return "Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
-        case 100: return "Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
-        case 101..<105: return "Snow Blower / Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
-        case 105: return "Snow Blower / Factory Machinery / Woodworking Class / Snowmobile / School Dance, Boom Box / Motorcycle"
-        case 106..<110: return "Power Saw / Leaf Blower / Subway / Music Club, Disco / Busy Video Arcade / Symphony Concert / Car Horn / Motorcycle / Rock Concert"
-        case 110: return "Baby Crying / Squeaky Toy Held Close to Ear / Power Saw / Leaf Blower / Subway / Music Club, Disco / Busy Video Arcade / Symphony Concert / Car Horn / Motorcycle / Rock Concert"
-        case 111..<112: return "Subway / Personal Music Player on High / Rock Concert"
-        case 112: return "Subway / Personal Music Player on High / Rock Concert"
-        case 113..<115: return "Subway / Rock Concert"
-        case 115: return "Subway / Rock Concert" // End of subway range
-        case 116..<117: return "Football Game Stadium / Rock Concert"
-        case 117: return "Football Game Stadium / Rock Concert"
-        case 118..<120: return "Rock Concert / Band Concert"
-        case 120: return "Chainsaw, Hammer On Nail / Pneumatic Drills, Heavy Machine / Jet Plane at Ramp / Ambulance Siren / Band Concert"
-        case 121..<125: return "Chainsaw, Hammer On Nail / Pneumatic Drills, Heavy Machine / Jet Plane at Ramp / Ambulance Siren / Auto Stereo"
-        case 125: return "Chainsaw, Hammer On Nail / Pneumatic Drills, Heavy Machine / Jet Plane at Ramp / Ambulance Siren / Auto Stereo"
-        case 126..<130: return "Jackhammer, Power Drill / Air Raid / Percussion Section at Symphony / Stock Car Races"
-        case 130: return "Jackhammer, Power Drill / Air Raid / Percussion Section at Symphony / Stock Car Races"
-        case 131..<135: return "Noisy Squeeze Toys"
-        case 135: return "Noisy Squeeze Toys"
-        case 136..<140: return "Airplane Taking Off"
-        case 140: return "Airplane Taking Off"
-        case 141..<143: return "Bicycle Horn"
-        case 143: return "Bicycle Horn"
-        case 144..<150: return "Firecracker / Jet Engine Taking Off / Artillery Fire at 500 Feet"
-        case 150: return "Firecracker / Jet Engine Taking Off / Artillery Fire at 500 Feet"
-        case 151..<156: return "Cap Gun"
-        case 156: return "Cap Gun"
-        case 157: return "Balloon Pop"
-        case 158..<162: return "Fireworks (at 3 Feet)"
-        case 162: return "Fireworks (at 3 Feet)"
-        case 163: return "Rifle"
-        case 164..<166: return "Handgun, Shotgun"
-        case 166..<170: return "Handgun, Shotgun"
-        case 170...188: return "Handgun, Shotgun" // Max for handgun/shotgun up to rocket
-        case 189...: return "Rocket Launching from Pad" // From 189 upwards
-        default:
-            return "Very Loud" // Default for levels not explicitly covered or above 189
+    func getContextualText(for level: Float, category: SoundCategory) -> String { // Changed to internal
+        let currentLevel = Int(level)
+
+        let matchingItems = soundLevelReferenceData.filter { item in
+            item.category == category && item.levelRange.contains(currentLevel)
+        }
+
+        if matchingItems.isEmpty {
+            if currentLevel < 40 {
+                return "Quiet Environment"
+            } else if currentLevel > 140 { // Example upper threshold
+                return "Very Loud"
+            }
+            // Try to find items in other categories if none in selected, or provide a generic sound level description
+            let anyCategoryItems = soundLevelReferenceData.filter { item in
+                item.levelRange.contains(currentLevel)
+            }
+            if !anyCategoryItems.isEmpty {
+                return anyCategoryItems.map { $0.description }.prefix(2).joined(separator: " / ") + (anyCategoryItems.count > 2 ? "..." : "")
+            }
+            return "Moderate Noise Level" // Fallback if no items match at all
+        }
+
+        // Join descriptions, limiting to a reasonable number to avoid overflow
+        let descriptions = matchingItems.map { $0.description }
+        if descriptions.count > 3 {
+            return descriptions.prefix(3).joined(separator: " / ") + "..."
+        } else {
+            return descriptions.joined(separator: " / ")
         }
     }
 
@@ -219,7 +281,7 @@ struct CircularGaugeView: View {
                     Text("\(Int(level)) dB")
                         .font(.system(size: size * 0.2, weight: .bold, design: fontDesign ?? .rounded)) // Use new property
                         .foregroundColor(textColor) // Use new property (nil means default)
-                    Text(getContextualText(for: level))
+                    Text(getContextualText(for: level, category: selectedCategory))
                         .font(.system(size: size * 0.05, weight: .medium, design: fontDesign ?? .rounded))
                         .foregroundColor(textColor)
                         .multilineTextAlignment(.center)

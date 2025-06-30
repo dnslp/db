@@ -363,6 +363,9 @@ struct ContentView: View {
     @State private var gaugeStyleConfig: GaugeStyleConfiguration = GaugeStyleConfiguration() // This will be our working copy
     @State private var showGaugeStyleEditor = false
 
+    // State for sound category selection
+    @State private var selectedSoundCategory: SoundCategory = .home
+
 
     var body: some View {
         ScrollView {
@@ -370,6 +373,15 @@ struct ContentView: View {
                 header
                 customizableGauge // Renamed from scalableGauge
                 stats
+
+                Picker("Contextual Sound Category", selection: $selectedSoundCategory) {
+                    ForEach(SoundCategory.allCases) { category in
+                        Text(category.rawValue).tag(category)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+
                 SpectrumView(data: meter.spectrum, animationSpeed: animationSpeed, lineSmoothness: lineSmoothness)
                     .frame(height: 100)
                     .padding(.horizontal)
@@ -489,7 +501,8 @@ struct ContentView: View {
                     showShadow: gaugeStyleConfig.showShadow,
                     customShadow: gaugeStyleConfig.customShadow,
                     textColor: gaugeStyleConfig.textColor,
-                    fontDesign: gaugeStyleConfig.fontDesign
+                    fontDesign: gaugeStyleConfig.fontDesign,
+                    selectedCategory: selectedSoundCategory // Pass the selected category
                 )
                 .frame(width: UIScreen.main.bounds.width * 0.75,
                        height: UIScreen.main.bounds.width * 0.75)
