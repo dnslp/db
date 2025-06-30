@@ -155,20 +155,80 @@ struct SpectrumView: View {
             if data.isEmpty {
                 Text("No data") // Handle empty data case
             } else {
+                // Log raw data and maxVal for analysis
+                // print("Spectrum Data: \(data)")
+                // print("Max Value: \(maxVal)")
+
                 let barW = geo.size.width / CGFloat(data.count)
-                let maxVal = data.max() ?? 1
+                let rawMaxVal = data.max() ?? 1.0 // Ensure it's a float for log
+                let epsilon: Float = 1e-6 // Small value to prevent log(0)
+
                 // Adjust corner radius based on lineSmoothness.
-                // Smaller barW might need smaller radius.
                 let cornerRadiusFactor = CGFloat(lineSmoothness) / 10.0 // Normalize smoothness to 0.1 - 1.0
                 let cornerRadius = barW * 0.2 * cornerRadiusFactor
+
+                // Determine a reasonable minimum log value, perhaps based on a perceptible floor
+                // This helps prevent -infinity heights and ensures very low sounds are still minimally visible if desired
+                // For now, let's use a fixed offset or a small portion of the max log value.
+                // Max possible log value if rawMaxVal is, for example, 100 is log10(100) = 2.
+                // If rawMaxVal is 1, log10(1) = 0.
+                // We need a range for our log values.
+                // Let's assume our processed spectrum data is in a range like 0 to 1 or 0 to some positive number.
+                // A common approach is to map decibels. If these are magnitudes, we convert.
+                // log_value = 20 * log10(amplitude_value + epsilon) - this gives dB like values
+                // For simplicity here, we'll use a direct log and then scale.
+
+                // Calculate log of maxVal, ensuring it's above a certain floor for scaling.
+                // If rawMaxVal is very small (e.g., 1.0), log10(1.0) is 0. We need to handle this.
+                // Let's establish a reference "silence" level in log scale, e.g., log10(epsilon)
+                let logSilence = log10(epsilon) // This will be a negative number, e.g., -6
+
+                // We want to map [logSilence, log10(rawMaxVal)] to [0, 1] for height.
+                // Or, more robustly, pick a dynamic range in dB, e.g., 60dB.
+                // If values are already somewhat dB-like (0-100), then log scaling might be too much.
+                // Given the current problem (50Hz high), let's assume values are magnitudes not yet in dB.
+
+                let maxLogVal = log10(rawMaxVal + epsilon) // log of the max value in the current data
 
                 ZStack(alignment: .bottomLeading) {
                     HStack(alignment: .bottom, spacing: barW * 0.2) {
                         ForEach(data.indices, id: \.self) { i in
+                            let value = data[i]
+                            let logVal = log10(value + epsilon) // log of current bar's value
+
+                            // Normalize: (currentLog - logSilence) / (maxLogVal - logSilence)
+                            // This maps values from [logSilence, maxLogVal] to [0, 1]
+                            // Ensure maxLogVal is greater than logSilence to avoid division by zero or negative results.
+                            let scaleFactor = (maxLogVal > logSilence) ? (maxLogVal - logSilence) : 1.0
+                            var normalizedHeight = (logVal - logSilence) / scaleFactor
+                            normalizedHeight = max(0, min(normalizedHeight, 1)) // Clamp to [0, 1]
+
+                            // Determine color based on normalizedHeight (which is log-scaled magnitude)
+                            // Lower height = lower magnitude = potentially darker/less opaque
+                            // Higher height = higher magnitude = brighter/more opaque
+                            // Adjusted for a potentially more "soothing" range.
+                            let minOpacity: Double = 0.4
+                            let maxOpacity: Double = 0.8
+                            let currentOpacity = minOpacity + (maxOpacity - minOpacity) * Double(normalizedHeight)
+
+                            // For color, we can interpolate as well, or use a predefined gradient.
+                            // Let's make it simple: vary brightness of accentColor, or use a fixed gradient.
+                            // Using accentColor and varying its opacity and potentially brightness.
+                            // For a simple gradient effect, we can use a predefined gradient.
+                            // For now, let's stick to modulating opacity of AccentColor.
+                            // A more complex gradient could be added later if desired.
+                            // To make lower values "darker", we could blend AccentColor with black.
+                            // Color.accentColor.mix(with: .black, by: 1.0 - CGFloat(normalizedHeight))
+                            // However, `mix` is not a standard SwiftUI Color method.
+                            // We can create a simple visual effect by adjusting brightness component of HSB if needed
+                            // or just rely on opacity for now.
+
+                            let barColor = Color.accentColor.opacity(currentOpacity)
+
                             RoundedRectangle(cornerRadius: cornerRadius)
-                                .fill(Color.accentColor.opacity(0.75))
-                                .frame(width: barW * 0.8, height: geo.size.height * CGFloat(data[i] / maxVal))
-                                .animation(.linear(duration: animationSpeed), value: data[i]) // Apply animation
+                                .fill(barColor)
+                                .frame(width: barW * 0.8, height: geo.size.height * CGFloat(normalizedHeight))
+                                .animation(.linear(duration: animationSpeed), value: value) // Animate based on original value for smoothness
                         }
                     }
                     // Frequency tick labels
